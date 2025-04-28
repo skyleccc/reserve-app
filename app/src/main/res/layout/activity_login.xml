@@ -95,6 +95,9 @@
             android:textColor="#808080"
             android:text="Continue"
             android:textSize="14dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/editTextTextPassword" />
@@ -121,6 +124,9 @@
             android:gravity="center"
             android:text="Continue with Google"
             android:textSize="14dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textTextView2" />
@@ -135,6 +141,9 @@
             android:gravity="center"
             android:text="Continue with Apple"
             android:textSize="14dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/buttonGoogle" />

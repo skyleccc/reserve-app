@@ -1,12 +1,10 @@
 package com.reserve.app;
 
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ImageSpan;
-import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -15,18 +13,17 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-public class LoginActivity extends AppCompatActivity {
-    private TextView loginButton, loginGoogleButton, loginAppleButton, createAccountButton;
+public class CreateAccountActivity extends AppCompatActivity {
+    private TextView createAccountButton, createAccountGoogleButton, createAccountAppleButton, loginAccountButton;
     private TextView header1TextView, header2TextView, footerTextView;
     private TextView[] textTextViews = new TextView[2];
-    private EditText emailEditText, passwordEditText;
-
+    private TextView firstNameEditText, lastNameEditText, emailEditText, passwordEditText, confirmPasswordEditText, phoneEditText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_create_account);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -34,58 +31,64 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         // Initialize UI components
-        loginButton = findViewById(R.id.buttonSignIn);
-        loginGoogleButton = findViewById(R.id.buttonGoogle);
-        loginAppleButton = findViewById(R.id.buttonApple);
+        createAccountButton = findViewById(R.id.buttonCreateAccount);
+        createAccountGoogleButton = findViewById(R.id.buttonCreateGoogle);
+        createAccountAppleButton = findViewById(R.id.buttonCreateApple);
         header1TextView = findViewById(R.id.headerTextView);
         header2TextView = findViewById(R.id.header2TextView);
         textTextViews[0] = findViewById(R.id.textTextView1);
         textTextViews[1] = findViewById(R.id.textTextView2);
+        firstNameEditText = findViewById(R.id.editTextFirstName);
+        lastNameEditText = findViewById(R.id.editTextLastName);
         emailEditText = findViewById(R.id.editTextTextEmailAddress);
         passwordEditText = findViewById(R.id.editTextTextPassword);
-        createAccountButton = findViewById(R.id.createAccountTextView);
+        confirmPasswordEditText = findViewById(R.id.editTextTextConfirmPassword);
+        phoneEditText = findViewById(R.id.editTextPhone);
         footerTextView = findViewById(R.id.footerTextView);
+        loginAccountButton = findViewById(R.id.loginAccountTextView);
+
 
         initializeUI();
 
-
-
-
-       loginButton.setOnClickListener(v -> {
-            // Handle login button click
-        });
-
-        loginGoogleButton.setOnClickListener(v -> {
-            // Handle Google login button click
-        });
-
-        loginAppleButton.setOnClickListener(v -> {
-            // Handle Apple login button click
-        });
-
-        createAccountButton.setOnClickListener(v -> {
+        createAccountButton.setOnClickListener(v -> {;
             // Handle create account button click
+        });
+
+        createAccountGoogleButton.setOnClickListener(v -> {
+            // Handle Google create account button click
+        });
+
+        createAccountAppleButton.setOnClickListener(v -> {
+            // Handle Apple create account button click
+        });
+
+        loginAccountButton.setOnClickListener(v -> {
+            // Handle login account button click
         });
     }
 
-    private void initializeUI() {
+    private void initializeUI(){
         // fonts
         Typeface lexendExaSemiFont = Typeface.createFromAsset(getAssets(), "fonts/LexendExa/LexendExa-SemiBold.ttf");
         Typeface interSemiFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-SemiBold.ttf");
         Typeface interRegularFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-Regular.ttf");
         Typeface interMediumFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-Medium.ttf");
 
+        createAccountButton.setTypeface(interSemiFont);
+        createAccountGoogleButton.setTypeface(interSemiFont);
+        createAccountAppleButton.setTypeface(interSemiFont);
         header1TextView.setTypeface(lexendExaSemiFont);
         header2TextView.setTypeface(interSemiFont);
-        loginButton.setTypeface(interMediumFont);
-        loginGoogleButton.setTypeface(interMediumFont);
-        loginAppleButton.setTypeface(interMediumFont);
         textTextViews[0].setTypeface(interRegularFont);
         textTextViews[1].setTypeface(interRegularFont);
+        firstNameEditText.setTypeface(interRegularFont);
+        lastNameEditText.setTypeface(interRegularFont);
         emailEditText.setTypeface(interRegularFont);
         passwordEditText.setTypeface(interRegularFont);
-        createAccountButton.setTypeface(interMediumFont);
+        confirmPasswordEditText.setTypeface(interRegularFont);
+        phoneEditText.setTypeface(interRegularFont);
         footerTextView.setTypeface(interRegularFont);
+        loginAccountButton.setTypeface(interMediumFont);
 
         // icons beside the buttons
         float density = getResources().getDisplayMetrics().density;
@@ -111,7 +114,7 @@ public class LoginActivity extends AppCompatActivity {
                 0, 1,
                 SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        loginGoogleButton.setText(loginGoogleText);
-        loginAppleButton.setText(loginAppleText);
+        createAccountGoogleButton.setText(loginGoogleText);
+        createAccountAppleButton.setText(loginAppleText);
     }
 }

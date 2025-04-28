@@ -1,0 +1,17 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="#DDDDDD" /> <!-- Slightly darker when pressed -->
+            <corners android:radius="8dp" />
+            <stroke android:color="#000000" android:width="1dp" />
+        </shape>
+    </item>
+    <item>
+        <!-- Default state (same as your rounded_square but defined inline) -->
+        <shape>
+            <solid android:color="@color/md_button" />
+            <corners android:radius="8dp" />
+            <stroke android:color="#000000" android:width="1dp" />
+        </shape>
+    </item>
+</selector>
