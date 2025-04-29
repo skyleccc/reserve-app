@@ -1,5 +1,6 @@
 package com.reserve.app;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -64,7 +65,8 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         createAccountButton.setOnClickListener(v -> {
-            // Handle create account button click
+            Intent intent = new Intent(LoginActivity.this, CreateAccountActivity.class);
+            startActivity(intent);
         });
     }
 

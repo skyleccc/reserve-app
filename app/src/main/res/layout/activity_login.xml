@@ -171,6 +171,7 @@
             android:textSize="14dp"
             android:clickable="true"
             android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
             android:textColor="#2196F3"
             android:textAlignment="center"
             app:layout_constraintEnd_toEndOf="parent"

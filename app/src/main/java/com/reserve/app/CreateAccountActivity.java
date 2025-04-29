@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ImageSpan;
 import android.widget.TextView;
+import android.content.Intent;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -63,7 +64,8 @@ public class CreateAccountActivity extends AppCompatActivity {
         });
 
         loginAccountButton.setOnClickListener(v -> {
-            // Handle login account button click
+            Intent intent = new Intent(CreateAccountActivity.this, LoginActivity.class);
+            startActivity(intent);
         });
     }
 
