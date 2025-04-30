@@ -1,4 +1,5 @@
-package com.usc.ezekiel_day1;
+package com.reserve.app;
+
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
