@@ -54,9 +54,18 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     private static final String MESSAGE_CONTENT = "content";
     private static final String MESSAGE_TIMESTAMP = "timestamp";
 
+    // Singleton Instance
+    private static DatabaseHandler instance;
 
     public DatabaseHandler(Context context){
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        super(context.getApplicationContext(), DATABASE_NAME, null, DATABASE_VERSION);
+    }
+
+    public static synchronized DatabaseHandler getInstance(Context context){
+        if (instance == null){
+            instance = new DatabaseHandler(context.getApplicationContext());
+        }
+        return instance;
     }
 
     @Override

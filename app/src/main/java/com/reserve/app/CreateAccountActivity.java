@@ -20,6 +20,8 @@ public class CreateAccountActivity extends AppCompatActivity {
     private TextView[] textTextViews = new TextView[2];
     private TextView firstNameEditText, lastNameEditText, emailEditText, passwordEditText, confirmPasswordEditText, phoneEditText;
 
+    private DatabaseHandler
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
