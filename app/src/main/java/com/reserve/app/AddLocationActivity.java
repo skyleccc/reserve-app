@@ -12,7 +12,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.imageview.ShapeableImageView;
 
-public class AddLocation extends AppCompatActivity {
+public class AddLocationActivity extends AppCompatActivity {
     TextView tvHeader, tvExplore, tvSaved, tvUpdates, tvAdd;
     ShapeableImageView ivProfile;
 
@@ -34,18 +34,5 @@ public class AddLocation extends AppCompatActivity {
         tvSaved = findViewById(R.id.tv_saved);
         tvUpdates = findViewById(R.id.tv_updates);
         tvAdd = findViewById(R.id.tv_add);
-
-        // Load custom fonts
-        Typeface lexendExaSemiFont = Typeface.createFromAsset(getAssets(), "fonts/LexendExa/LexendExa-SemiBold.ttf");
-        Typeface interRegularFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-Regular.ttf");
-        Typeface interMediumFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-Medium.ttf");
-
-
-        // Set custom font
-        tvHeader.setTypeface(lexendExaSemiFont);
-        tvExplore.setTypeface(interMediumFont);
-        tvSaved.setTypeface(interMediumFont);
-        tvUpdates.setTypeface(interMediumFont);
-        tvAdd.setTypeface(interMediumFont);
     }
 }

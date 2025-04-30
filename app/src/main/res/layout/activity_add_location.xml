@@ -5,7 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".AddLocation">
+    tools:context=".AddLocationActivity">
 
     <RelativeLayout
         android:id="@+id/rl_header"
@@ -21,9 +21,10 @@
             android:id="@+id/tv_header"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:fontFamily="@font/lexend_exa_semibold"
             android:text="Reserve"
-            android:textSize="28sp"
-            android:layout_centerHorizontal="true"/>
+            android:textSize="28sp" />
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/iv_profile"
@@ -56,7 +57,6 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:layout_weight="1"
                 android:src="@drawable/location_on_40px"
                 android:layout_gravity="center"/>
 
@@ -64,6 +64,7 @@
                 android:id="@+id/tv_explore"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_semibold"
                 android:text="Explore"
                 android:textSize="12sp"
                 android:layout_gravity="center"/>
@@ -90,9 +91,10 @@
                 android:id="@+id/tv_saved"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:fontFamily="@font/inter_semibold"
                 android:text="Saved"
-                android:textSize="12sp"
-                android:layout_gravity="center"/>
+                android:textSize="12sp" />
 
         </LinearLayout>
 
@@ -116,6 +118,7 @@
                 android:id="@+id/tv_updates"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_semibold"
                 android:text="Updates"
                 android:textSize="12sp"
                 android:layout_gravity="center"/>
@@ -142,6 +145,7 @@
                 android:id="@+id/tv_add"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_semibold"
                 android:text="Add"
                 android:textSize="12sp"
                 android:layout_gravity="center"/>
