@@ -288,4 +288,26 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         db.close();
         return rowsAffected;
     }
+
+    public boolean isEmailUnique(String email) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_USERS + " WHERE " + USER_EMAIL + "=?";
+        Cursor cursor = db.rawQuery(query, new String[]{email});
+
+        boolean isUnique = (cursor.getCount() == 0);
+        cursor.close();
+        db.close();
+        return isUnique;
+    }
+
+    public boolean isPhoneUnique(String phone) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_USERS + " WHERE " + USER_PHONE + "=?";
+        Cursor cursor = db.rawQuery(query, new String[]{phone});
+
+        boolean isUnique = (cursor.getCount() == 0);
+        cursor.close();
+        db.close();
+        return isUnique;
+    }
 }
