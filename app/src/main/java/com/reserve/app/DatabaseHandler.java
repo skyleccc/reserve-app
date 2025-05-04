@@ -1,313 +1,240 @@
 package com.reserve.app;
 
-import android.content.ContentValues;
 import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
+import androidx.annotation.NonNull;
 
-public class DatabaseHandler extends SQLiteOpenHelper {
-    // Database Version
-    private static final int DATABASE_VERSION = 1;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 
-    // Database Name
-    private static final String DATABASE_NAME = "ReserveAppDB";
+import java.util.HashMap;
+import java.util.Map;
 
-    // Table Names
-    private static final String TABLE_USERS = "users";
-    private static final String TABLE_PARKING_SPACES = "parking_spaces";
-    private static final String TABLE_RENTALS = "rentals";
-    private static final String TABLE_MESSAGES = "messages";
-
-    // Common Column Names
-    private static final String KEY_ID = "id";
-    private static final String KEY_CREATED_AT = "created_at";
-
-    // Users Table Columns
-    private static final String USER_FIRST_NAME = "first_name";
-    private static final String USER_LAST_NAME = "last_name";
-    private static final String USER_EMAIL = "email";
-    private static final String USER_PASSWORD = "password";
-    private static final String USER_PHONE = "phone";
-    private static final String USER_AUTH_TYPE = "auth_type";
-
-    // Parking Space Table Column
-    private static final String PARKING_SPACE_NAME = "name";
-    private static final String PARKING_SPACE_LOCATION = "location";
-    private static final String PARKING_3H_RATE = "3h_rate";
-    private static final String PARKING_6H_RATE = "6h_rate";
-    private static final String PARKING_12H_RATE = "12h_rate";
-    private static final String PARKING_24H_RATE = "24h_rate";
-    private static final String PARKING_USER_ID = "user_id";
-
-    // Rental Table Column
-    private static final String RENTAL_USER_ID = "user_id";
-    private static final String RENTAL_PARKING_SPACE_ID = "parking_space_id";
-    private static final String RENTAL_START_TIME = "start_time";
-    private static final String RENTAL_END_TIME = "end_time";
-    private static final String RENTAL_TOTAL_COST = "total_cost";
-    private static final String RENTAL_STATUS = "status";
-
-    // Messages Table Column
-    private static final String MESSAGE_SENDER_ID = "sender_id";
-    private static final String MESSAGE_RECEIVER_ID = "receiver_id";
-    private static final String MESSAGE_CONTENT = "content";
-    private static final String MESSAGE_TIMESTAMP = "timestamp";
-
-    // Singleton Instance
-    private static DatabaseHandler instance;
-
-    public DatabaseHandler(Context context){
-        super(context.getApplicationContext(), DATABASE_NAME, null, DATABASE_VERSION);
+public class DatabaseHandler {
+    // Callback interfaces for async operations
+    public interface AuthCallback {
+        void onSuccess(FirebaseUser user);
+        void onFailure(Exception e);
     }
 
-    public static synchronized DatabaseHandler getInstance(Context context){
-        if (instance == null){
+    public interface BooleanCallback {
+        void onResult(boolean result);
+        void onError(Exception e);
+    }
+
+    // Singleton instance
+    private static DatabaseHandler instance;
+
+    // Firebase instances
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
+
+    // Collection names
+    private static final String COLLECTION_USERS = "users";
+    private static final String COLLECTION_PARKING_SPACES = "parking_spaces";
+    private static final String COLLECTION_RENTALS = "rentals";
+    private static final String COLLECTION_MESSAGES = "messages";
+
+    private DatabaseHandler(Context context) {
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+    }
+
+    public static synchronized DatabaseHandler getInstance(Context context) {
+        if (instance == null) {
             instance = new DatabaseHandler(context.getApplicationContext());
         }
         return instance;
     }
 
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-        createUsersTable(db);
-        createParkingSpacesTable(db);
-        createRentalsTable(db);
-        createMessagesTable(db);
+    // User creation
+    public void createUser(String firstName, String lastName, String email, String password, String phone, String authType, AuthCallback callback) {
+        mAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
+                        FirebaseUser user = task.getResult().getUser();
+                        // Update display name on Auth and chain the task
+                        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                .setDisplayName(firstName + " " + lastName)
+                                .build();
+                        user.updateProfile(profileUpdates)
+                                .addOnCompleteListener(profileTask -> {
+                                    if (profileTask.isSuccessful()) {
+                                        // Create corresponding Firestore document once profile update is successful
+                                        Map<String, Object> userData = new HashMap<>();
+                                        userData.put("firstName", firstName);
+                                        userData.put("lastName", lastName);
+                                        userData.put("email", email);
+                                        userData.put("phone", phone);
+                                        userData.put("authType", authType);
+                                        userData.put("createdAt", com.google.firebase.Timestamp.now());
+                                        db.collection(COLLECTION_USERS).document(user.getUid())
+                                                .set(userData)
+                                                .addOnSuccessListener(aVoid -> callback.onSuccess(user))
+                                                .addOnFailureListener(callback::onFailure);
+                                    } else {
+                                        callback.onFailure(profileTask.getException());
+                                    }
+                                });
+                    } else {
+                        callback.onFailure(task.getException());
+                    }
+                });
     }
 
-    @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Drop older table if existed
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_PARKING_SPACES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_RENTALS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_MESSAGES);
-
-        // Create tables again
-        onCreate(db);
+    // Email uniqueness check
+    public void isEmailUnique(String email, BooleanCallback callback) {
+        db.collection(COLLECTION_USERS)
+                .whereEqualTo("email", email)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onResult(task.getResult().isEmpty());
+                    } else {
+                        callback.onError(task.getException());
+                    }
+                });
     }
 
-    private void createUsersTable(SQLiteDatabase db){
-        String CREATE_USERS_TABLE = "CREATE TABLE " + TABLE_USERS + "("
-                + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + USER_FIRST_NAME + " TEXT,"
-                + USER_LAST_NAME + " TEXT,"
-                + USER_EMAIL + " TEXT UNIQUE,"
-                + USER_PASSWORD + " TEXT,"
-                + USER_PHONE + " TEXT,"
-                + USER_AUTH_TYPE + " TEXT,"
-                + KEY_CREATED_AT + " TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
-                ")";
-        db.execSQL(CREATE_USERS_TABLE);
+    // Phone uniqueness check
+    public void isPhoneUnique(String phone, BooleanCallback callback) {
+        db.collection(COLLECTION_USERS)
+                .whereEqualTo("phone", phone)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onResult(task.getResult().isEmpty());
+                    } else {
+                        callback.onError(task.getException());
+                    }
+                });
     }
 
-    private void createParkingSpacesTable(SQLiteDatabase db){
-        String CREATE_PARKING_SPACES_TABLE = "CREATE TABLE " + TABLE_PARKING_SPACES + "("
-                + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + PARKING_SPACE_NAME + " TEXT,"
-                + PARKING_SPACE_LOCATION + " TEXT,"
-                + PARKING_3H_RATE + " REAL,"
-                + PARKING_6H_RATE + " REAL,"
-                + PARKING_12H_RATE + " REAL,"
-                + PARKING_24H_RATE + " REAL,"
-                + PARKING_USER_ID + " INTEGER,"
-                + KEY_CREATED_AT + " TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
-                ")";
-        db.execSQL(CREATE_PARKING_SPACES_TABLE);
-    }
-
-    private void createRentalsTable(SQLiteDatabase db){
-        String CREATE_RENTALS_TABLE = "CREATE TABLE " + TABLE_RENTALS + "("
-                + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + RENTAL_USER_ID + " INTEGER,"
-                + RENTAL_PARKING_SPACE_ID + " INTEGER,"
-                + RENTAL_START_TIME + " TIMESTAMP,"
-                + RENTAL_END_TIME + " TIMESTAMP,"
-                + RENTAL_TOTAL_COST + " REAL,"
-                + RENTAL_STATUS + " TEXT,"
-                + KEY_CREATED_AT + " TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
-                ")";
-        db.execSQL(CREATE_RENTALS_TABLE);
-    }
-
-    private void createMessagesTable(SQLiteDatabase db){
-        String CREATE_MESSAGES_TABLE = "CREATE TABLE " + TABLE_MESSAGES + "("
-                + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + MESSAGE_SENDER_ID + " INTEGER,"
-                + MESSAGE_RECEIVER_ID + " INTEGER,"
-                + MESSAGE_CONTENT + " TEXT,"
-                + MESSAGE_TIMESTAMP + " TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
-                ")";
-        db.execSQL(CREATE_MESSAGES_TABLE);
-    }
-
-    public long createUser(String firstName, String lastName, String email, String password, String phone, String authType) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(USER_FIRST_NAME, firstName);
-        values.put(USER_LAST_NAME, lastName);
-        values.put(USER_EMAIL, email);
-        values.put(USER_PASSWORD, password);
-        values.put(USER_PHONE, phone);
-        values.put(USER_AUTH_TYPE, authType);
-
-        long id = db.insert(TABLE_USERS, null, values);
-        db.close();
-        return id;
-    }
-
-    public long createParkingSpace(String name, String location, double rate3h, double rate6h, double rate12h, double rate24h, int userId) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(PARKING_SPACE_NAME, name);
-        values.put(PARKING_SPACE_LOCATION, location);
-        values.put(PARKING_3H_RATE, rate3h);
-        values.put(PARKING_6H_RATE, rate6h);
-        values.put(PARKING_12H_RATE, rate12h);
-        values.put(PARKING_24H_RATE, rate24h);
-        values.put(PARKING_USER_ID, userId);
-
-        long id = db.insert(TABLE_PARKING_SPACES, null, values);
-        db.close();
-        return id;
-    }
-
-    public long createRental(int userId, int parkingSpaceId, String startTime, String endTime, double totalCost, String status) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(RENTAL_USER_ID, userId);
-        values.put(RENTAL_PARKING_SPACE_ID, parkingSpaceId);
-        values.put(RENTAL_START_TIME, startTime);
-        values.put(RENTAL_END_TIME, endTime);
-        values.put(RENTAL_TOTAL_COST, totalCost);
-        values.put(RENTAL_STATUS, status);
-
-        long id = db.insert(TABLE_RENTALS, null, values);
-        db.close();
-        return id;
-    }
-
-    public long createMessage(int senderId, int receiverId, String content) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(MESSAGE_SENDER_ID, senderId);
-        values.put(MESSAGE_RECEIVER_ID, receiverId);
-        values.put(MESSAGE_CONTENT, content);
-
-        long id = db.insert(TABLE_MESSAGES, null, values);
-        db.close();
-        return id;
-    }
-
-    public long readUserDetails(String email) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        long id = -1;
-
-        String query = "SELECT * FROM " + TABLE_USERS + " WHERE " + USER_EMAIL + "=?";
-        Cursor cursor = db.rawQuery(query, new String[]{email});
-
-        if (cursor != null && cursor.moveToFirst()) {
-            int columnIndex = cursor.getColumnIndex(KEY_ID);
-            if (columnIndex != -1) {
-                id = cursor.getLong(columnIndex);
-            }
-            cursor.close();
+    // Parking space creation
+    public void createParkingSpace(String name, String location, double rate3h,
+                                   double rate6h, double rate12h, double rate24h,
+                                   BooleanCallback callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
         }
-        db.close();
-        return id;
+
+        Map<String, Object> parkingSpace = new HashMap<>();
+        parkingSpace.put("name", name);
+        parkingSpace.put("location", location);
+        parkingSpace.put("rate3h", rate3h);
+        parkingSpace.put("rate6h", rate6h);
+        parkingSpace.put("rate12h", rate12h);
+        parkingSpace.put("rate24h", rate24h);
+        parkingSpace.put("userId", currentUser.getUid());
+        parkingSpace.put("createdAt", com.google.firebase.Timestamp.now());
+
+        db.collection(COLLECTION_PARKING_SPACES)
+                .add(parkingSpace)
+                .addOnSuccessListener(doc -> callback.onResult(true))
+                .addOnFailureListener(e -> callback.onError(e));
     }
 
-    public long readParkingSpaceDetails(int userId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        long id = -1;
-
-        String query = "SELECT * FROM " + TABLE_PARKING_SPACES + " WHERE " + PARKING_USER_ID + "=?";
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(userId)});
-
-        if (cursor != null && cursor.moveToFirst()) {
-            int columnIndex = cursor.getColumnIndex(KEY_ID);
-            if (columnIndex != -1) {
-                id = cursor.getLong(columnIndex);
-            }
-            cursor.close();
+    // Rental creation
+    public void createRental(String parkingSpaceId, String startTime,
+                             String endTime, double totalCost, String status,
+                             BooleanCallback callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
         }
-        db.close();
-        return id;
+
+        Map<String, Object> rental = new HashMap<>();
+        rental.put("userId", currentUser.getUid());
+        rental.put("parkingSpaceId", parkingSpaceId);
+        rental.put("startTime", startTime);
+        rental.put("endTime", endTime);
+        rental.put("totalCost", totalCost);
+        rental.put("status", status);
+        rental.put("createdAt", com.google.firebase.Timestamp.now());
+
+        db.collection(COLLECTION_RENTALS)
+                .add(rental)
+                .addOnSuccessListener(doc -> callback.onResult(true))
+                .addOnFailureListener(e -> callback.onError(e));
     }
 
-    public long readRentalDetails(int userId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        long id = -1;
-
-        String query = "SELECT * FROM " + TABLE_RENTALS + " WHERE " + RENTAL_USER_ID + "=?";
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(userId)});
-
-        if (cursor != null && cursor.moveToFirst()) {
-            int columnIndex = cursor.getColumnIndex(KEY_ID);
-            if (columnIndex != -1) {
-                id = cursor.getLong(columnIndex);
-            }
-            cursor.close();
+    // Message creation
+    public void createMessage(String receiverId, String content, BooleanCallback callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
         }
-        db.close();
-        return id;
+
+        Map<String, Object> message = new HashMap<>();
+        message.put("senderId", currentUser.getUid());
+        message.put("receiverId", receiverId);
+        message.put("content", content);
+        message.put("timestamp", com.google.firebase.Timestamp.now());
+
+        db.collection(COLLECTION_MESSAGES)
+                .add(message)
+                .addOnSuccessListener(doc -> callback.onResult(true))
+                .addOnFailureListener(e -> callback.onError(e));
     }
 
-    public long updateUserDetails(int userId, String firstName, String lastName, String email, String password, String phone) {
-        SQLiteDatabase db = this.getWritableDatabase();
+    // User profile update
+    public void updateUserDetails(String firstName, String lastName, String phone,
+                                  BooleanCallback callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
+        }
 
-        ContentValues values = new ContentValues();
-        values.put(USER_FIRST_NAME, firstName);
-        values.put(USER_LAST_NAME, lastName);
-        values.put(USER_EMAIL, email);
-        values.put(USER_PASSWORD, password);
-        values.put(USER_PHONE, phone);
+        // Update display name in Auth
+        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                .setDisplayName(firstName + " " + lastName)
+                .build();
 
-        int rowsAffected = db.update(TABLE_USERS, values, KEY_ID + "=?", new String[]{String.valueOf(userId)});
-        db.close();
-        return rowsAffected;
+        currentUser.updateProfile(profileUpdates);
+
+        // Update Firestore user document
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("firstName", firstName);
+        updates.put("lastName", lastName);
+        updates.put("phone", phone);
+
+        db.collection(COLLECTION_USERS)
+                .document(currentUser.getUid())
+                .update(updates)
+                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                .addOnFailureListener(e -> callback.onError(e));
     }
 
-    public long updateParkingSpaceDetails(int parkingSpaceId, String name, String location, double rate3h, double rate6h, double rate12h, double rate24h) {
-        SQLiteDatabase db = this.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(PARKING_SPACE_NAME, name);
-        values.put(PARKING_SPACE_LOCATION, location);
-        values.put(PARKING_3H_RATE, rate3h);
-        values.put(PARKING_6H_RATE, rate6h);
-        values.put(PARKING_12H_RATE, rate12h);
-        values.put(PARKING_24H_RATE, rate24h);
-
-        int rowsAffected = db.update(TABLE_PARKING_SPACES, values, KEY_ID + "=?", new String[]{String.valueOf(parkingSpaceId)});
-        db.close();
-        return rowsAffected;
+    // Authentication methods
+    public void signInUser(String email, String password, AuthCallback callback) {
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onSuccess(mAuth.getCurrentUser());
+                    } else {
+                        callback.onFailure(task.getException());
+                    }
+                });
     }
 
-    public boolean isEmailUnique(String email) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_USERS + " WHERE " + USER_EMAIL + "=?";
-        Cursor cursor = db.rawQuery(query, new String[]{email});
-
-        boolean isUnique = (cursor.getCount() == 0);
-        cursor.close();
-        db.close();
-        return isUnique;
+    public void signOut() {
+        mAuth.signOut();
     }
 
-    public boolean isPhoneUnique(String phone) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_USERS + " WHERE " + USER_PHONE + "=?";
-        Cursor cursor = db.rawQuery(query, new String[]{phone});
-
-        boolean isUnique = (cursor.getCount() == 0);
-        cursor.close();
-        db.close();
-        return isUnique;
+    public FirebaseUser getCurrentUser() {
+        return mAuth.getCurrentUser();
     }
 }

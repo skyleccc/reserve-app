@@ -1,12 +1,14 @@
 package com.reserve.app;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ImageSpan;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -16,11 +18,14 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.auth.FirebaseUser;
+
 public class LoginActivity extends AppCompatActivity {
     private TextView loginButton, loginGoogleButton, loginAppleButton, createAccountButton;
-    private TextView header1TextView, header2TextView, footerTextView;
+    private TextView header1TextView, header2TextView, footerTextView, errorMessageTextView;
     private TextView[] textTextViews = new TextView[2];
     private EditText emailEditText, passwordEditText;
+    private DatabaseHandler databaseHandler;
 
 
     @Override
@@ -46,15 +51,12 @@ public class LoginActivity extends AppCompatActivity {
         passwordEditText = findViewById(R.id.editTextTextPassword);
         createAccountButton = findViewById(R.id.createAccountTextView);
         footerTextView = findViewById(R.id.footerTextView);
+        errorMessageTextView = findViewById(R.id.errorMessageTextView);
 
         initializeUI();
 
 
-
-
-       loginButton.setOnClickListener(v -> {
-            // Handle login button click
-        });
+        loginButton.setOnClickListener(v -> { loginUserEmail(); });
 
         loginGoogleButton.setOnClickListener(v -> {
             // Handle Google login button click
@@ -67,6 +69,53 @@ public class LoginActivity extends AppCompatActivity {
         createAccountButton.setOnClickListener(v -> {
             Intent intent = new Intent(LoginActivity.this, CreateAccountActivity.class);
             startActivity(intent);
+        });
+    }
+
+    private void loginUserEmail() {
+        String email = emailEditText.getText().toString();
+        String password = passwordEditText.getText().toString();
+
+        if (email.isEmpty() || password.isEmpty()) {
+            // Lacking Credentials
+            errorMessageTextView.setText("Please fill in all fields.");
+            errorMessageTextView.setVisibility(View.VISIBLE);
+
+            if (email.isEmpty()) {
+                emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                emailEditText.setError("Email is required");
+            };
+
+            if (password.isEmpty()) {
+                passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                passwordEditText.setError("Password is required");
+            };
+
+            return;
+        }
+
+        // Show loading state
+        loginButton.setEnabled(false);
+        loginButton.setText("Logging In...");
+
+        databaseHandler = DatabaseHandler.getInstance(this);
+        databaseHandler.signInUser(email, password, new DatabaseHandler.AuthCallback() {
+            @Override
+            public void onSuccess(FirebaseUser user) {
+                // Handle successful login
+                Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+                startActivity(intent);
+                finish();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                // Handle login failure
+                errorMessageTextView.setText("Invalid credentials. Please try again.");
+                errorMessageTextView.setVisibility(View.VISIBLE);
+                loginButton.setEnabled(true);
+                loginButton.setText("Continue");
+            }
         });
     }
 
@@ -88,6 +137,7 @@ public class LoginActivity extends AppCompatActivity {
         passwordEditText.setTypeface(interRegularFont);
         createAccountButton.setTypeface(interMediumFont);
         footerTextView.setTypeface(interRegularFont);
+        errorMessageTextView.setTypeface(interMediumFont);
 
         // icons beside the buttons
         float density = getResources().getDisplayMetrics().density;

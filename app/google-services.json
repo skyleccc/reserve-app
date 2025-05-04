@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "703701794897",
+    "project_id": "reserve-app-506fe",
+    "storage_bucket": "reserve-app-506fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703701794897:android:013ed9aa7273c22861f870",
+        "android_client_info": {
+          "package_name": "com.reserve.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGlVzYgCqKaVyxJ99K9ytm2bK6jwYSgj4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
