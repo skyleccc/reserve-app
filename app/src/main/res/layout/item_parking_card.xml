@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp">
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/card_bg"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:layout_margin="8dp"
+        android:elevation="4dp">
+
+        <!-- Location Title -->
+        <TextView
+            android:id="@+id/location_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Near Lechon House"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:textColor="#000000" />
+
+        <!-- Address -->
+        <TextView
+            android:id="@+id/location_address"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Azalla's Lechon House, Saint Jude Street, Hippodromo, Cebu City, 6000 Cebu"
+            android:textSize="12sp"
+            android:textColor="#444444"
+            android:layout_marginTop="2dp" />
+
+        <!-- Image and Prices Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Map Image -->
+            <ImageView
+                android:id="@+id/map_thumbnail"
+                android:layout_width="120dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_map_placeholder"
+                android:scaleType="centerCrop"
+                android:background="@drawable/rounded_corners"
+                android:layout_marginEnd="12dp" />
+
+            <!-- Price Info -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/first_hour"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="First Hour  = ₱30.00"
+                    android:textSize="12sp"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/exceeding"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Exceeding   = ₱15.00"
+                    android:textSize="12sp"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/per_day"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Per Day     = ₱345.00"
+                    android:textSize="12sp"
+                    android:textColor="#333333" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Book Now Button -->
+        <Button
+            android:id="@+id/book_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Book Now!"
+            android:textAllCaps="false"
+            android:backgroundTint="#4B4B4B"
+            android:textColor="#FFFFFF"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+
+</LinearLayout>
