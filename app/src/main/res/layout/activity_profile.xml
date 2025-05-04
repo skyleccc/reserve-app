@@ -68,6 +68,7 @@
             android:orientation="vertical">
 
             <LinearLayout
+                android:id="@+id/accountLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
@@ -186,6 +187,7 @@
             android:layout_marginVertical="10dp"
             android:orientation="vertical">
             <LinearLayout
+                android:id="@+id/whatsNewLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
@@ -205,6 +207,7 @@
                     app:srcCompat="@drawable/logout" />
             </LinearLayout>
             <LinearLayout
+                android:id="@+id/faqLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
@@ -224,6 +227,7 @@
                     app:srcCompat="@drawable/logout" />
             </LinearLayout>
             <LinearLayout
+                android:id="@+id/termsLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
@@ -242,7 +246,10 @@
                     android:layout_height="30sp"
                     app:srcCompat="@drawable/logout" />
             </LinearLayout>
+
+<!--            Added id for Privacy Policy -->
             <LinearLayout
+                android:id="@+id/privacyPolicyLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"

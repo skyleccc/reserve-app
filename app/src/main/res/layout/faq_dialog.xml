@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Frequently Asked Questions"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Q: How do I reserve a parking spot?\nA: Use the 'Reserve Spot' button on the home screen and select your desired location and time.\n\nQ: Can I cancel a reservation?\nA: Yes, go to 'My Reservations' and select the one you want to cancel.\n\nQ: Is my payment information secure?\nA: Yes, we use encrypted channels for all transactions.\n\nQ: What if I arrive late?\nA: Your spot is held for 15 minutes after the start time.\n\nQ: Who do I contact for support?\nA: Email us at support@reserveparking.com"
+            android:paddingBottom="12dp" />
+    </LinearLayout>
+</ScrollView>
