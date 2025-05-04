@@ -1,26 +1,44 @@
 package com.reserve.app;
 
+import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ImageSpan;
+import android.view.View;
 import android.widget.TextView;
-import android.content.Intent;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.GetCredentialRequest;
+import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.exceptions.GetCredentialException;
+
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.auth.FirebaseUser;
 
 public class CreateAccountActivity extends AppCompatActivity {
     private TextView createAccountButton, createAccountGoogleButton, createAccountAppleButton, loginAccountButton;
-    private TextView header1TextView, header2TextView, footerTextView;
+    private TextView header1TextView, header2TextView, footerTextView, errorTextView;
     private TextView[] textTextViews = new TextView[2];
     private TextView firstNameEditText, lastNameEditText, emailEditText, passwordEditText, confirmPasswordEditText, phoneEditText;
 
-    private DatabaseHandler
+    private DatabaseHandler dbHandler;
+
+    private CredentialManager credentialManager;
+    private static final int REQ_ONE_TAP = 2;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,16 +67,21 @@ public class CreateAccountActivity extends AppCompatActivity {
         phoneEditText = findViewById(R.id.editTextPhone);
         footerTextView = findViewById(R.id.footerTextView);
         loginAccountButton = findViewById(R.id.loginAccountTextView);
+        errorTextView = findViewById(R.id.errorMessageTextView);
 
+        // DB instance
+        dbHandler = DatabaseHandler.getInstance(this);
 
         initializeUI();
 
-        createAccountButton.setOnClickListener(v -> {;
-            // Handle create account button click
+        createAccountButton.setOnClickListener(v -> {
+            resetPrevious();
+            createUser();
         });
 
         createAccountGoogleButton.setOnClickListener(v -> {
-            // Handle Google create account button click
+            resetPrevious();
+            createUserGoogle();
         });
 
         createAccountAppleButton.setOnClickListener(v -> {
@@ -69,6 +92,177 @@ public class CreateAccountActivity extends AppCompatActivity {
             Intent intent = new Intent(CreateAccountActivity.this, LoginActivity.class);
             startActivity(intent);
         });
+    }
+
+    private void createUser() {
+        // Handle create account button click
+        String firstName = firstNameEditText.getText().toString();
+        String lastName = lastNameEditText.getText().toString();
+        String email = emailEditText.getText().toString();
+        String password = passwordEditText.getText().toString();
+        String confirmPassword = confirmPasswordEditText.getText().toString();
+        String phone = phoneEditText.getText().toString();
+
+        if(firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || phone.isEmpty()) {
+            // Lacking Credentials
+            errorTextView.setText("Please fill in all fields.");
+            errorTextView.setVisibility(View.VISIBLE);
+
+            if(firstName.isEmpty()) { firstNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); firstNameEditText.setError("First name is required"); }
+            if(lastName.isEmpty()) { lastNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); lastNameEditText.setError("Last name is required");}
+            if(email.isEmpty()) { emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); emailEditText.setError("Email is required"); }
+            if(password.isEmpty()) { passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); passwordEditText.setError("Password is required"); }
+            if(confirmPassword.isEmpty()) { confirmPasswordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); confirmPasswordEditText.setError("Password is required"); }
+            if(phone.isEmpty()) { phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); phoneEditText.setError("Phone number is required"); }
+
+            return;
+        }
+
+        if(!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            // Invalid email format
+            errorTextView.setText("Invalid email format.");
+            errorTextView.setVisibility(View.VISIBLE);
+            emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            return;
+        }
+
+        if(!android.util.Patterns.PHONE.matcher(phone).matches()){
+            // Invalid phone number format
+            errorTextView.setText("Invalid phone number format.");
+            errorTextView.setVisibility(View.VISIBLE);
+            phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            return;
+        }
+
+        if(password.length() < 8){
+            // Password too short
+            errorTextView.setText("Password must be at least 8 characters.");
+            errorTextView.setVisibility(View.VISIBLE);
+            passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            return;
+        }
+
+        if(!password.equals(confirmPassword)) {
+            // Not the same password
+            errorTextView.setText("Passwords do not match.");
+            errorTextView.setVisibility(View.VISIBLE);
+            passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            confirmPasswordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            return;
+        }
+
+        // Show loading state
+        createAccountButton.setEnabled(false);
+        createAccountButton.setText("Creating Account...");
+
+        // First check if email is unique
+        dbHandler.isEmailUnique(email, new DatabaseHandler.BooleanCallback() {
+            @Override
+            public void onResult(boolean isUnique) {
+                if (!isUnique) {
+                    runOnUiThread(() -> {
+                        errorTextView.setText("Email already exists.");
+                        errorTextView.setVisibility(View.VISIBLE);
+                        emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                        createAccountButton.setEnabled(true);
+                        createAccountButton.setText("Continue");
+                    });
+                    return;
+                }
+
+                // Then check if phone is unique
+                dbHandler.isPhoneUnique(phone, new DatabaseHandler.BooleanCallback() {
+                    @Override
+                    public void onResult(boolean isUnique) {
+                        if (!isUnique) {
+                            runOnUiThread(() -> {
+                                errorTextView.setText("Phone number already exists.");
+                                errorTextView.setVisibility(View.VISIBLE);
+                                phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                                createAccountButton.setEnabled(true);
+                                createAccountButton.setText("Continue");
+                            });
+                            return;
+                        }
+
+                        // If both checks pass, create the user
+                        dbHandler.createUser(firstName, lastName, email, password, phone, "Normal",
+                                new DatabaseHandler.AuthCallback() {
+                                    @Override
+                                    public void onSuccess(FirebaseUser user) {
+                                        runOnUiThread(() -> {
+                                            Toast.makeText(CreateAccountActivity.this,
+                                                    "Account created successfully!",
+                                                    Toast.LENGTH_SHORT).show();
+
+                                            // Navigate to the next screen
+                                            Intent intent = new Intent(CreateAccountActivity.this, MainActivity.class);
+                                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                            startActivity(intent);
+                                            finish();
+                                        });
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+                                        runOnUiThread(() -> {
+                                            errorTextView.setText("Failed to create account: " + e.getMessage());
+                                            errorTextView.setVisibility(View.VISIBLE);
+                                            createAccountButton.setEnabled(true);
+                                            createAccountButton.setText("Continue");
+                                        });
+                                    }
+                                });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        runOnUiThread(() -> {
+                            errorTextView.setText("Error checking phone: " + e.getMessage());
+                            errorTextView.setVisibility(View.VISIBLE);
+                            createAccountButton.setEnabled(true);
+                            createAccountButton.setText("Continue");
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                runOnUiThread(() -> {
+                    errorTextView.setText("Error checking email: " + e.getMessage());
+                    errorTextView.setVisibility(View.VISIBLE);
+                    createAccountButton.setEnabled(true);
+                    createAccountButton.setText("Continue");
+                });
+            }
+        });
+    }
+
+    private void createUserGoogle(){
+        // Instantiate a Google sign-in request
+        GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(true)
+                .setServerClientId(getString(R.string.default_web_client_id))
+                .build();
+
+        // Create the Credential Manager request
+        GetCredentialRequest request = new GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build();
+
+
+    }
+
+    private void resetPrevious(){
+        // Reset the background tint of all EditText fields
+        firstNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        lastNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        confirmPasswordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        errorTextView.setVisibility(View.GONE);
     }
 
     private void initializeUI(){
@@ -93,6 +287,7 @@ public class CreateAccountActivity extends AppCompatActivity {
         phoneEditText.setTypeface(interRegularFont);
         footerTextView.setTypeface(interRegularFont);
         loginAccountButton.setTypeface(interMediumFont);
+        errorTextView.setTypeface(interMediumFont);
 
         // icons beside the buttons
         float density = getResources().getDisplayMetrics().density;
