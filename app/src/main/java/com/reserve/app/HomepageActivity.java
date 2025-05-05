@@ -42,7 +42,7 @@ public class HomepageActivity extends AppCompatActivity {
         LinearLayout navAdd = findViewById(R.id.nav_add);
 
         navExplore.setOnClickListener(v -> {
-            // Stay here or refresh
+
         });
 
         navSaved.setOnClickListener(v -> {
