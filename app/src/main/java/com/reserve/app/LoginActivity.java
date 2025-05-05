@@ -39,6 +39,15 @@ public class LoginActivity extends AppCompatActivity {
             return insets;
         });
 
+        // Check if user is already logged in
+        boolean loggedIn = getSharedPreferences("app", MODE_PRIVATE).getBoolean("logged_in", false);
+        if (loggedIn) {
+            Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         // Initialize UI components
         loginButton = findViewById(R.id.buttonSignIn);
         loginGoogleButton = findViewById(R.id.buttonGoogle);
@@ -103,6 +112,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onSuccess(FirebaseUser user) {
                 // Handle successful login
+                getSharedPreferences("app", MODE_PRIVATE).edit().putBoolean("logged_in", true).apply();
                 Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
                 startActivity(intent);
                 finish();
