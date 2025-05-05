@@ -90,8 +90,8 @@
             android:orientation="vertical">
             
             <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/location_on_40px"
                 android:layout_gravity="center"/>
 
@@ -101,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/inter_semibold"
                 android:text="Explore"
-                android:textSize="12sp"
+                android:textSize="8sp"
                 android:layout_gravity="center"/>
 
         </LinearLayout>
@@ -113,8 +113,8 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/bookmarks_40px"
                 android:layout_gravity="center"/>
 
@@ -125,7 +125,7 @@
                 android:layout_gravity="center"
                 android:fontFamily="@font/inter_semibold"
                 android:text="Saved"
-                android:textSize="12sp" />
+                android:textSize="8sp" />
 
         </LinearLayout>
 
@@ -136,8 +136,8 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/notifications_40px"
                 android:layout_gravity="center"/>
 
@@ -147,7 +147,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/inter_semibold"
                 android:text="Updates"
-                android:textSize="12sp"
+                android:textSize="8sp"
                 android:layout_gravity="center"/>
 
         </LinearLayout>
@@ -159,8 +159,8 @@
             android:orientation="vertical">
 
             <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/add_40px"
                 android:layout_gravity="center"/>
 
@@ -170,7 +170,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/inter_semibold"
                 android:text="Add"
-                android:textSize="12sp"
+                android:textSize="8sp"
                 android:layout_gravity="center"/>
 
         </LinearLayout>
