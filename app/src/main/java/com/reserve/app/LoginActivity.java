@@ -18,6 +18,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 public class LoginActivity extends AppCompatActivity {
@@ -26,6 +27,8 @@ public class LoginActivity extends AppCompatActivity {
     private TextView[] textTextViews = new TextView[2];
     private EditText emailEditText, passwordEditText;
     private DatabaseHandler databaseHandler;
+    private FirebaseAuth mAuth;
+    private FirebaseUser user;
 
 
     @Override
@@ -40,9 +43,11 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         // Check if user is already logged in
-        boolean loggedIn = getSharedPreferences("app", MODE_PRIVATE).getBoolean("logged_in", false);
-        if (loggedIn) {
-            Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+        mAuth = FirebaseAuth.getInstance();
+        user = mAuth.getCurrentUser();
+        if (user != null) {
+            // User is already logged in
+            Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
             startActivity(intent);
             finish();
             return;
@@ -112,8 +117,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onSuccess(FirebaseUser user) {
                 // Handle successful login
-                getSharedPreferences("app", MODE_PRIVATE).edit().putBoolean("logged_in", true).apply();
-                Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
+                Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
                 startActivity(intent);
                 finish();
             }

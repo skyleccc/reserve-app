@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
@@ -61,7 +62,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@null"
-            android:hint="Best Parking Spots near you"
+            android:hint="Search your parking spots..."
             android:paddingStart="10dp"
             android:textColor="#000"
             android:textSize="14sp" />
@@ -84,6 +85,7 @@
             android:layout_weight="0.25"/>
 
         <LinearLayout
+            android:id="@+id/nav_explore"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -107,6 +109,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/nav_saved"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -130,6 +133,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/nav_updates"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -153,6 +157,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/nav_add"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
