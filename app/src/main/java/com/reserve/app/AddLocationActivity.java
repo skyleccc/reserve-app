@@ -25,6 +25,9 @@ public class AddLocationActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_add_location);
 
+        // Profile click listener
+        ivProfile = findViewById(R.id.iv_profile);
+
         // Bottom nav click listeners
         navExplore = findViewById(R.id.nav_explore);
         navSaved = findViewById(R.id.nav_saved);
@@ -38,6 +41,10 @@ public class AddLocationActivity extends AppCompatActivity {
         tvSaved = findViewById(R.id.tv_saved);
         tvUpdates = findViewById(R.id.tv_updates);
         tvAdd = findViewById(R.id.tv_add);
+
+        ivProfile.setOnClickListener(v -> {
+            startActivity(new Intent(this, ProfileActivity.class));
+        });
 
         navExplore.setOnClickListener(v -> {
             startActivity(new Intent(this, HomepageActivity.class));

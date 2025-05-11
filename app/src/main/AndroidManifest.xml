@@ -15,7 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ReserveApp"
         tools:targetApi="31">
-
+        <activity
+            android:name=".CompleteGoogleSignupActivity"
+            android:exported="false" />
         <activity
             android:name=".EditUser"
             android:exported="false" />

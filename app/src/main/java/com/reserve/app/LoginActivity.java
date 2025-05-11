@@ -18,8 +18,16 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginActivity extends AppCompatActivity {
     private TextView loginButton, loginGoogleButton, loginAppleButton, createAccountButton;
@@ -29,6 +37,7 @@ public class LoginActivity extends AppCompatActivity {
     private DatabaseHandler databaseHandler;
     private FirebaseAuth mAuth;
     private FirebaseUser user;
+    private static final int REQ_ONE_TAP = 2;
 
 
     @Override
@@ -73,7 +82,7 @@ public class LoginActivity extends AppCompatActivity {
         loginButton.setOnClickListener(v -> { loginUserEmail(); });
 
         loginGoogleButton.setOnClickListener(v -> {
-            // Handle Google login button click
+            loginUserGoogle();
         });
 
         loginAppleButton.setOnClickListener(v -> {
@@ -131,6 +140,106 @@ public class LoginActivity extends AppCompatActivity {
                 loginButton.setText("Continue");
             }
         });
+    }
+
+    private void loginUserGoogle() {
+        // Configure Google Sign-In
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .requestProfile() // Request profile info to get name
+                .build();
+
+        GoogleSignInClient googleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        // Show loading state
+        loginGoogleButton.setEnabled(false);
+
+        // Start the Google Sign-In intent
+        Intent signInIntent = googleSignInClient.getSignInIntent();
+        startActivityForResult(signInIntent, REQ_ONE_TAP);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQ_ONE_TAP) {
+            try {
+                GoogleSignInAccount account = GoogleSignIn.getSignedInAccountFromIntent(data).getResult(ApiException.class);
+                if (account != null) {
+                    firebaseAuthWithGoogle(account);
+                }
+            } catch (ApiException e) {
+                errorMessageTextView.setText("Google sign-in failed: " + e.getMessage());
+                errorMessageTextView.setVisibility(View.VISIBLE);
+                loginGoogleButton.setEnabled(true);
+            }
+        }
+    }
+
+    private void firebaseAuthWithGoogle(GoogleSignInAccount account) {
+        // Get the ID token from the Google Sign-In account
+        AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
+
+        // Authenticate with Firebase
+        databaseHandler = DatabaseHandler.getInstance(this);
+        FirebaseAuth.getInstance().signInWithCredential(credential)
+                .addOnCompleteListener(this, task -> {
+                    loginGoogleButton.setEnabled(true);
+
+                    if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
+                        // Check if the user has phone number in Firestore
+                        FirebaseUser user = task.getResult().getUser();
+                        checkUserProfileCompletion(user, account);
+                    } else {
+                        // Handle failure
+                        String errorMessage = task.getException() != null ? task.getException().getMessage() : "Authentication failed";
+                        errorMessageTextView.setText("Authentication failed: " + errorMessage);
+                        errorMessageTextView.setVisibility(View.VISIBLE);
+                    }
+                });
+    }
+
+    private void checkUserProfileCompletion(FirebaseUser user, GoogleSignInAccount account) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("users").document(user.getUid()).get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        if (task.getResult().exists() && task.getResult().get("phone") != null) {
+                            // User has complete profile, proceed to homepage
+                            Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            // User needs to complete their profile
+                            String firstName = account.getGivenName() != null ? account.getGivenName() : "";
+                            String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
+                            String email = account.getEmail();
+                            String idToken = account.getIdToken();
+
+                            Intent intent = new Intent(LoginActivity.this, CompleteGoogleSignupActivity.class);
+                            intent.putExtra("firstName", firstName);
+                            intent.putExtra("lastName", lastName);
+                            intent.putExtra("email", email);
+                            intent.putExtra("idToken", idToken);
+                            startActivity(intent);
+                        }
+                    } else {
+                        // Couldn't verify user profile - proceed to completion screen to be safe
+                        String firstName = account.getGivenName() != null ? account.getGivenName() : "";
+                        String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
+                        String email = account.getEmail();
+                        String idToken = account.getIdToken();
+
+                        Intent intent = new Intent(LoginActivity.this, CompleteGoogleSignupActivity.class);
+                        intent.putExtra("firstName", firstName);
+                        intent.putExtra("lastName", lastName);
+                        intent.putExtra("email", email);
+                        intent.putExtra("idToken", idToken);
+                        startActivity(intent);
+                    }
+                });
     }
 
     private void initializeUI() {

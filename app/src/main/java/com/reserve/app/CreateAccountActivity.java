@@ -22,9 +22,15 @@ import androidx.credentials.GetCredentialRequest;
 import androidx.credentials.GetCredentialResponse;
 import androidx.credentials.exceptions.GetCredentialException;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -68,6 +74,9 @@ public class CreateAccountActivity extends AppCompatActivity {
         footerTextView = findViewById(R.id.footerTextView);
         loginAccountButton = findViewById(R.id.loginAccountTextView);
         errorTextView = findViewById(R.id.errorMessageTextView);
+
+        // Create a CredentialManager instance
+        credentialManager = CredentialManager.create(this);
 
         // DB instance
         dbHandler = DatabaseHandler.getInstance(this);
@@ -239,19 +248,102 @@ public class CreateAccountActivity extends AppCompatActivity {
         });
     }
 
-    private void createUserGoogle(){
-        // Instantiate a Google sign-in request
-        GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(true)
-                .setServerClientId(getString(R.string.default_web_client_id))
+    private void createUserGoogle() {
+        // Configure Google Sign-In
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .requestProfile() // Request profile info to get name
                 .build();
 
-        // Create the Credential Manager request
-        GetCredentialRequest request = new GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build();
+        GoogleSignInClient googleSignInClient = GoogleSignIn.getClient(this, gso);
 
+        // Start the Google Sign-In intent
+        Intent signInIntent = googleSignInClient.getSignInIntent();
+        startActivityForResult(signInIntent, REQ_ONE_TAP);
+    }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQ_ONE_TAP) {
+            try {
+                GoogleSignInAccount account = GoogleSignIn.getSignedInAccountFromIntent(data).getResult(ApiException.class);
+                if (account != null) {
+                    firebaseAuthWithGoogle(account);
+                }
+            } catch (ApiException e) {
+                errorTextView.setText("Google sign-in failed: " + e.getMessage());
+                errorTextView.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    private void firebaseAuthWithGoogle(GoogleSignInAccount account) {
+        // Get the ID token from the Google Sign-In account
+        AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
+        String email = account.getEmail();
+
+        // Show loading state
+        createAccountGoogleButton.setEnabled(false);
+        createAccountGoogleButton.setText("Checking account...");
+
+        // First check if email already exists in the database
+        dbHandler.isEmailUnique(email, new DatabaseHandler.BooleanCallback() {
+            @Override
+            public void onResult(boolean isUnique) {
+                if (!isUnique) {
+                    // Email already exists
+                    runOnUiThread(() -> {
+                        errorTextView.setText("An account with this email already exists. Please use the login option.");
+                        errorTextView.setVisibility(View.VISIBLE);
+                        createAccountGoogleButton.setEnabled(true);
+                        createAccountGoogleButton.setText("\uFFFC Continue with Google");
+                    });
+                    // Sign out from the current Google sign-in attempt
+                    FirebaseAuth.getInstance().signOut();
+                    return;
+                }
+
+                // If email is unique, authenticate with Firebase
+                FirebaseAuth.getInstance().signInWithCredential(credential)
+                        .addOnCompleteListener(CreateAccountActivity.this, task -> {
+                            createAccountGoogleButton.setEnabled(true);
+                            createAccountGoogleButton.setText("\uFFFC Continue with Google");
+
+                            if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
+                                // Get user data from Google account
+                                String firstName = account.getGivenName() != null ? account.getGivenName() : "";
+                                String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
+                                String idToken = account.getIdToken();
+
+                                // Navigate to completion screen
+                                Intent intent = new Intent(CreateAccountActivity.this, CompleteGoogleSignupActivity.class);
+                                intent.putExtra("firstName", firstName);
+                                intent.putExtra("lastName", lastName);
+                                intent.putExtra("email", email);
+                                intent.putExtra("idToken", idToken);
+                                startActivity(intent);
+                            } else {
+                                // Handle failure
+                                String errorMessage = task.getException() != null ? task.getException().getMessage() : "Authentication failed";
+                                errorTextView.setText("Authentication failed: " + errorMessage);
+                                errorTextView.setVisibility(View.VISIBLE);
+                            }
+                        });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                runOnUiThread(() -> {
+                    errorTextView.setText("Error checking email: " + e.getMessage());
+                    errorTextView.setVisibility(View.VISIBLE);
+                    createAccountGoogleButton.setEnabled(true);
+                    createAccountGoogleButton.setText("\uFFFC Continue with Google");
+                });
+            }
+        });
     }
 
     private void resetPrevious(){

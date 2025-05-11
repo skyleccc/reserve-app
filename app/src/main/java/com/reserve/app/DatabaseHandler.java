@@ -118,6 +118,40 @@ public class DatabaseHandler {
                 });
     }
 
+    public void createUserWithGoogle(AuthCredential credential, String firstName, String lastName, String email, String phone, AuthCallback callback) {
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
+                        FirebaseUser user = task.getResult().getUser();
+                        // Update display name on Auth and chain the task
+                        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                .setDisplayName(firstName + " " + lastName)
+                                .build();
+                        user.updateProfile(profileUpdates)
+                                .addOnCompleteListener(profileTask -> {
+                                    if (profileTask.isSuccessful()) {
+                                        // Create corresponding Firestore document once profile update is successful
+                                        Map<String, Object> userData = new HashMap<>();
+                                        userData.put("firstName", firstName);
+                                        userData.put("lastName", lastName);
+                                        userData.put("email", email);
+                                        userData.put("phone", phone);
+                                        userData.put("authType", "Google");
+                                        userData.put("createdAt", com.google.firebase.Timestamp.now());
+                                        db.collection(COLLECTION_USERS).document(user.getUid())
+                                                .set(userData)
+                                                .addOnSuccessListener(aVoid -> callback.onSuccess(user))
+                                                .addOnFailureListener(callback::onFailure);
+                                    } else {
+                                        callback.onFailure(profileTask.getException());
+                                    }
+                                });
+                    } else {
+                        callback.onFailure(task.getException());
+                    }
+                });
+    }
+
     // Parking space creation
     public void createParkingSpace(String name, String location, double rate3h,
                                    double rate6h, double rate12h, double rate24h,
@@ -237,4 +271,5 @@ public class DatabaseHandler {
     public FirebaseUser getCurrentUser() {
         return mAuth.getCurrentUser();
     }
+
 }
