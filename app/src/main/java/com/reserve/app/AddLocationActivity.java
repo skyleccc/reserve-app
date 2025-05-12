@@ -218,12 +218,15 @@ public class AddLocationActivity extends AppCompatActivity {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
+        // Show loading indicator if needed
+        // progressBar.setVisibility(View.VISIBLE);
+
         db.collection("parking_spaces")
                 .whereEqualTo("userId", currentUser.getUid())
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    parkingSpots.clear();
-                    spotIds = new String[queryDocumentSnapshots.size()];
+                    List<ParkingSpot> newSpots = new ArrayList<>();
+                    String[] newSpotIds = new String[queryDocumentSnapshots.size()];
 
                     int i = 0;
                     for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
@@ -239,30 +242,47 @@ public class AddLocationActivity extends AppCompatActivity {
                         String price12Hours = "₱" + String.format("%.2f", rate12h);
                         String pricePerDay = "₱" + String.format("%.2f", rate24h);
 
-                        parkingSpots.add(new ParkingSpot(name, location,
+                        newSpots.add(new ParkingSpot(name, location,
                                 R.drawable.ic_map_placeholder, price3Hours,
                                 price6Hours, price12Hours, pricePerDay));
 
-                        spotIds[i++] = doc.getId();
+                        newSpotIds[i++] = doc.getId();
                     }
 
-                    adapter = new OwnerParkingSpotsAdapter(AddLocationActivity.this,
-                            parkingSpots, spotIds,
-                            new OwnerParkingSpotsAdapter.OnParkingSpotActionListener() {
-                                @Override
-                                public void onEditClick(int position, String spotId) {
-                                    editParkingSpot(position, spotId);
-                                }
+                    // Update existing lists instead of recreating them
+                    parkingSpots.clear();
+                    parkingSpots.addAll(newSpots);
+                    spotIds = newSpotIds;
 
-                                @Override
-                                public void onDeleteClick(int position, String spotId) {
-                                    confirmDeleteParkingSpot(position, spotId);
-                                }
-                            });
+                    // Only create adapter if it doesn't exist
+                    if (adapter == null) {
+                        adapter = new OwnerParkingSpotsAdapter(AddLocationActivity.this,
+                                parkingSpots, spotIds,
+                                new OwnerParkingSpotsAdapter.OnParkingSpotActionListener() {
+                                    @Override
+                                    public void onEditClick(int position, String spotId) {
+                                        editParkingSpot(position, spotId);
+                                    }
 
-                    parkingList.setAdapter(adapter);
+                                    @Override
+                                    public void onDeleteClick(int position, String spotId) {
+                                        confirmDeleteParkingSpot(position, spotId);
+                                    }
+                                });
+                        parkingList.setAdapter(adapter);
+                    } else {
+                        // Update adapter's data
+                        adapter.updateData(parkingSpots, spotIds);
+                        adapter.notifyDataSetChanged();
+                    }
+
+                    // Hide loading indicator if needed
+                    // progressBar.setVisibility(View.GONE);
                 })
                 .addOnFailureListener(e -> {
+                    // Hide loading indicator if needed
+                    // progressBar.setVisibility(View.GONE);
+
                     Toast.makeText(AddLocationActivity.this, "Failed to load parking spots: " +
                             e.getMessage(), Toast.LENGTH_SHORT).show();
                 });

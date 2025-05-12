@@ -71,6 +71,11 @@ public class OwnerParkingSpotsAdapter extends RecyclerView.Adapter<OwnerParkingS
         return spotList == null ? 0 : spotList.size();
     }
 
+    public void updateData(List<ParkingSpot> newSpotList, String[] newSpotIds) {
+        this.spotList = newSpotList;
+        this.spotIds = newSpotIds;
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, address, hour3Rate, hour6Rate, hour12Rate, perDayRate;
         ImageView image;
