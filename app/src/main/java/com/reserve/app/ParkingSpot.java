@@ -4,17 +4,19 @@ public class ParkingSpot {
     String title;
     String address;
     int imageResId;
-    String priceFirstHour;
-    String priceExceeding;
+    String price3Hours;
+    String price6Hours;
+    String price12Hours;
     String pricePerDay;
 
     public ParkingSpot(String title, String address, int imageResId,
-                       String priceFirstHour, String priceExceeding, String pricePerDay) {
+                       String price3Hours, String price6Hours, String price12Hours, String pricePerDay) {
         this.title = title;
         this.address = address;
         this.imageResId = imageResId;
-        this.priceFirstHour = priceFirstHour;
-        this.priceExceeding = priceExceeding;
+        this.price3Hours = price3Hours;
+        this.price6Hours = price6Hours;
+        this.price12Hours = price12Hours;
         this.pricePerDay = pricePerDay;
     }
 }

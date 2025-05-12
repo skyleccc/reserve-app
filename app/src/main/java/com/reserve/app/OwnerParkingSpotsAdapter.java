@@ -13,19 +13,30 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
 
-public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.ViewHolder> {
+public class OwnerParkingSpotsAdapter extends RecyclerView.Adapter<OwnerParkingSpotsAdapter.ViewHolder> {
     private Context context;
     private List<ParkingSpot> spotList;
+    private String[] spotIds;
+    private OnParkingSpotActionListener listener;
 
-    public ParkingSpotAdapter(Context context, List<ParkingSpot> spotList) {
+    public interface OnParkingSpotActionListener {
+        void onEditClick(int position, String spotId);
+        void onDeleteClick(int position, String spotId);
+    }
+
+    public OwnerParkingSpotsAdapter(Context context, List<ParkingSpot> spotList,
+                                    String[] spotIds, OnParkingSpotActionListener listener) {
         this.context = context;
         this.spotList = spotList;
+        this.spotIds = spotIds;
+        this.listener = listener;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_parking_card, parent, false);
+        View view = LayoutInflater.from(context).inflate(
+                R.layout.item_parking_owner_card, parent, false);
         return new ViewHolder(view);
     }
 
@@ -38,24 +49,34 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
         holder.hour3Rate.setText("3 Hours = " + spot.price3Hours);
         holder.hour6Rate.setText("6 Hours = " + spot.price6Hours);
         holder.hour12Rate.setText("12 Hours = " + spot.price12Hours);
-        holder.perDayRate.setText("1 Day = " + spot.pricePerDay);
+        holder.perDayRate.setText("Per Day = " + spot.pricePerDay);
 
-        holder.bookButton.setOnClickListener(v -> {
-            // TODO: Handle booking
+        // Set up button click listeners
+        final int pos = position;
+        holder.editButton.setOnClickListener(v -> {
+            if (listener != null && pos < spotIds.length) {
+                listener.onEditClick(pos, spotIds[pos]);
+            }
+        });
+
+        holder.deleteButton.setOnClickListener(v -> {
+            if (listener != null && pos < spotIds.length) {
+                listener.onDeleteClick(pos, spotIds[pos]);
+            }
         });
     }
 
     @Override
     public int getItemCount() {
-        return spotList.size();
+        return spotList == null ? 0 : spotList.size();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, address, hour3Rate, hour6Rate, hour12Rate, perDayRate;
         ImageView image;
-        Button bookButton;
+        Button editButton, deleteButton;
 
-        public ViewHolder(@NonNull View itemView) {
+        ViewHolder(View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.location_title);
             address = itemView.findViewById(R.id.location_address);
@@ -63,8 +84,9 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
             hour3Rate = itemView.findViewById(R.id.et_rate_3h);
             hour6Rate = itemView.findViewById(R.id.et_rate_6h);
             hour12Rate = itemView.findViewById(R.id.et_rate_12h);
-            perDayRate  = itemView.findViewById(R.id.per_day);
-            bookButton = itemView.findViewById(R.id.book_button);
+            perDayRate = itemView.findViewById(R.id.per_day);
+            editButton = itemView.findViewById(R.id.edit_button);
+            deleteButton = itemView.findViewById(R.id.delete_button);
         }
     }
 }

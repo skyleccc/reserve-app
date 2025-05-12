@@ -31,6 +31,10 @@ public class SessionManager {
     private SharedPreferences prefs;
     private SharedPreferences.Editor editor;
 
+    // User location keys
+    private static final String KEY_LAT = "user_lat";
+    private static final String KEY_LNG = "user_lng";
+
     public SessionManager(Context context) {
         prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         editor = prefs.edit();
@@ -45,6 +49,20 @@ public class SessionManager {
         editor.putString(KEY_PHONE, phone);
         editor.putString(KEY_AUTH_TYPE, authType);
         editor.apply();
+    }
+
+    public void saveUserLocation(double latitude, double longitude) {
+        editor.putFloat(KEY_LAT, (float) latitude);
+        editor.putFloat(KEY_LNG, (float) longitude);
+        editor.apply();
+    }
+
+    public double getUserLat() {
+        return prefs.getFloat(KEY_LAT, 0);
+    }
+
+    public double getUserLng() {
+        return prefs.getFloat(KEY_LNG, 0);
     }
 
     public boolean isLoggedIn() {

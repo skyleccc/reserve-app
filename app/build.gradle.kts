@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
+    implementation(libs.play.services.maps)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -67,4 +68,8 @@ dependencies {
     // Credential Management
     implementation("androidx.credentials:credentials-play-services-auth:1.0.0");
     implementation("androidx.credentials:credentials:1.2.0-alpha03");
+
+    // Maps
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }

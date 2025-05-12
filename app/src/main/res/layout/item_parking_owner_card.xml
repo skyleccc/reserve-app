@@ -92,17 +92,32 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Book Now Button -->
-        <Button
-            android:id="@+id/book_button"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Book Now!"
-            android:textAllCaps="false"
-            android:backgroundTint="#4B4B4B"
-            android:textColor="#FFFFFF"
-            android:layout_gravity="end"
-            android:layout_marginTop="8dp" />
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/edit_button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="Edit"
+                android:textAllCaps="false"
+                android:backgroundTint="#4B4B4B"
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/delete_button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="Delete"
+                android:textAllCaps="false"
+                android:backgroundTint="#D32F2F"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
     </LinearLayout>
 
 

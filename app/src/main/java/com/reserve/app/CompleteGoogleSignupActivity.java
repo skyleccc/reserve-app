@@ -18,6 +18,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class CompleteGoogleSignupActivity extends AppCompatActivity {
     private TextView completeAccountButton;
