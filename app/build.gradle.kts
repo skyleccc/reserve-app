@@ -63,4 +63,8 @@ dependencies {
 
     // Google Sign-in
     implementation("com.google.android.gms:play-services-auth:20.7.0");
+
+    // Credential Management
+    implementation("androidx.credentials:credentials-play-services-auth:1.0.0");
+    implementation("androidx.credentials:credentials:1.2.0-alpha03");
 }

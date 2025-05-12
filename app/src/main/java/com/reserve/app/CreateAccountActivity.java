@@ -41,8 +41,6 @@ public class CreateAccountActivity extends AppCompatActivity {
     private TextView firstNameEditText, lastNameEditText, emailEditText, passwordEditText, confirmPasswordEditText, phoneEditText;
 
     private DatabaseHandler dbHandler;
-
-    private CredentialManager credentialManager;
     private static final int REQ_ONE_TAP = 2;
 
 
@@ -75,9 +73,6 @@ public class CreateAccountActivity extends AppCompatActivity {
         loginAccountButton = findViewById(R.id.loginAccountTextView);
         errorTextView = findViewById(R.id.errorMessageTextView);
 
-        // Create a CredentialManager instance
-        credentialManager = CredentialManager.create(this);
-
         // DB instance
         dbHandler = DatabaseHandler.getInstance(this);
 
@@ -94,7 +89,7 @@ public class CreateAccountActivity extends AppCompatActivity {
         });
 
         createAccountAppleButton.setOnClickListener(v -> {
-            // Handle Apple create account button click
+            resetPrevious();
         });
 
         loginAccountButton.setOnClickListener(v -> {
@@ -199,6 +194,17 @@ public class CreateAccountActivity extends AppCompatActivity {
                                 new DatabaseHandler.AuthCallback() {
                                     @Override
                                     public void onSuccess(FirebaseUser user) {
+                                        // Create session
+                                        SessionManager sessionManager = new SessionManager(CreateAccountActivity.this);
+                                        sessionManager.saveUserSession(
+                                                user.getUid(),
+                                                firstName,
+                                                lastName,
+                                                email,
+                                                phone,
+                                                "Normal"
+                                        );
+
                                         runOnUiThread(() -> {
                                             Toast.makeText(CreateAccountActivity.this,
                                                     "Account created successfully!",
@@ -296,10 +302,10 @@ public class CreateAccountActivity extends AppCompatActivity {
                 if (!isUnique) {
                     // Email already exists
                     runOnUiThread(() -> {
-                        errorTextView.setText("An account with this email already exists. Please use the login option.");
-                        errorTextView.setVisibility(View.VISIBLE);
+                        initializeUI();
+                        errorTextView.setText("An account with this email already exists.\nPlease use the login option.");
                         createAccountGoogleButton.setEnabled(true);
-                        createAccountGoogleButton.setText("\uFFFC Continue with Google");
+                        errorTextView.setVisibility(View.VISIBLE);
                     });
                     // Sign out from the current Google sign-in attempt
                     FirebaseAuth.getInstance().signOut();

@@ -37,6 +37,7 @@ public class LoginActivity extends AppCompatActivity {
     private DatabaseHandler databaseHandler;
     private FirebaseAuth mAuth;
     private FirebaseUser user;
+    SessionManager sessionManager;
     private static final int REQ_ONE_TAP = 2;
 
 
@@ -54,11 +55,46 @@ public class LoginActivity extends AppCompatActivity {
         // Check if user is already logged in
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();
-        if (user != null) {
-            // User is already logged in
+        sessionManager = new SessionManager(LoginActivity.this);
+
+        if (user != null && sessionManager.isLoggedIn()) {
+            // Both Firebase Auth and SessionManager confirm user is logged in
             Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
             startActivity(intent);
             finish();
+            return;
+        } else if (user != null && !sessionManager.isLoggedIn()) {
+            // Firebase says user is logged in but session data is missing
+            // Need to populate the session data from Firestore
+            FirebaseFirestore.getInstance().collection("users").document(user.getUid())
+                    .get()
+                    .addOnSuccessListener(document -> {
+                        if (document.exists()) {
+                            // Create session from Firestore data
+                            sessionManager.saveUserSession(
+                                    user.getUid(),
+                                    document.getString("firstName"),
+                                    document.getString("lastName"),
+                                    document.getString("email"),
+                                    document.getString("phone"),
+                                    document.getString("authType")
+                            );
+
+                            // Now navigate to homepage
+                            Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            // User exists in Auth but not in Firestore - sign out
+                            FirebaseAuth.getInstance().signOut();
+                            sessionManager.clearSession();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        // Error retrieving data - sign out to be safe
+                        FirebaseAuth.getInstance().signOut();
+                        sessionManager.clearSession();
+                    });
             return;
         }
 
@@ -125,10 +161,27 @@ public class LoginActivity extends AppCompatActivity {
         databaseHandler.signInUser(email, password, new DatabaseHandler.AuthCallback() {
             @Override
             public void onSuccess(FirebaseUser user) {
-                // Handle successful login
-                Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
-                startActivity(intent);
-                finish();
+                // Get additional user data from Firestore
+                FirebaseFirestore.getInstance().collection("users").document(user.getUid())
+                        .get()
+                        .addOnSuccessListener(document -> {
+                            if (document.exists()) {
+                                // Save user session
+                                sessionManager.saveUserSession(
+                                        user.getUid(),
+                                        document.getString("firstName"),
+                                        document.getString("lastName"),
+                                        document.getString("email"),
+                                        document.getString("phone"),
+                                        document.getString("authType")
+                                );
+
+                                // Navigate to homepage
+                                Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
+                                startActivity(intent);
+                                finish();
+                            }
+                        });
             }
 
             @Override

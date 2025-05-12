@@ -124,6 +124,17 @@ public class CompleteGoogleSignupActivity extends AppCompatActivity {
                 dbHandler.createUserWithGoogle(credential, firstName, lastName, email, phone, new DatabaseHandler.AuthCallback() {
                     @Override
                     public void onSuccess(FirebaseUser user) {
+                        // Create session
+                        SessionManager sessionManager = new SessionManager(CompleteGoogleSignupActivity.this);
+                        sessionManager.saveUserSession(
+                                user.getUid(),
+                                firstName,
+                                lastName,
+                                email,
+                                phone,
+                                "Google"
+                        );
+
                         runOnUiThread(() -> {
                             Toast.makeText(CompleteGoogleSignupActivity.this, "Account created successfully!", Toast.LENGTH_SHORT).show();
                             Intent intent = new Intent(CompleteGoogleSignupActivity.this, MainActivity.class);
