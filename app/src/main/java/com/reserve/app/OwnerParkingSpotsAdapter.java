@@ -51,17 +51,19 @@ public class OwnerParkingSpotsAdapter extends RecyclerView.Adapter<OwnerParkingS
         holder.hour12Rate.setText("12 Hours = " + spot.price12Hours);
         holder.perDayRate.setText("Per Day = " + spot.pricePerDay);
 
-        // Set up button click listeners
-        final int pos = position;
+        // IMPORTANT: Don't store position in a final variable
+        // Use holder.getBindingAdapterPosition() at click time instead
         holder.editButton.setOnClickListener(v -> {
-            if (listener != null && pos < spotIds.length) {
-                listener.onEditClick(pos, spotIds[pos]);
+            int currentPos = holder.getAdapterPosition();
+            if (listener != null && currentPos != RecyclerView.NO_POSITION && currentPos < spotIds.length) {
+                listener.onEditClick(currentPos, spotIds[currentPos]);
             }
         });
 
         holder.deleteButton.setOnClickListener(v -> {
-            if (listener != null && pos < spotIds.length) {
-                listener.onDeleteClick(pos, spotIds[pos]);
+            int currentPos = holder.getAdapterPosition();
+            if (listener != null && currentPos != RecyclerView.NO_POSITION && currentPos < spotIds.length) {
+                listener.onDeleteClick(currentPos, spotIds[currentPos]);
             }
         });
     }
@@ -74,6 +76,7 @@ public class OwnerParkingSpotsAdapter extends RecyclerView.Adapter<OwnerParkingS
     public void updateData(List<ParkingSpot> newSpotList, String[] newSpotIds) {
         this.spotList = newSpotList;
         this.spotIds = newSpotIds;
+        notifyDataSetChanged();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

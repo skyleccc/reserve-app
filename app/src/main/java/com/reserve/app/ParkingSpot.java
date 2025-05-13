@@ -19,4 +19,5 @@ public class ParkingSpot {
         this.price12Hours = price12Hours;
         this.pricePerDay = pricePerDay;
     }
+
 }

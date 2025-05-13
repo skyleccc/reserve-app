@@ -45,6 +45,12 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
         });
     }
 
+    public void updateSpots(List<ParkingSpot> newSpots) {
+        this.spotList.clear();
+        this.spotList.addAll(newSpots);
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getItemCount() {
         return spotList.size();

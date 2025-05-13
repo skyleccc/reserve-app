@@ -1,16 +1,23 @@
 package com.reserve.app;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,15 +35,26 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Source;
 
+import org.w3c.dom.Text;
+
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class AddLocationActivity extends AppCompatActivity {
     TextView tvHeader, tvExplore, tvSaved, tvUpdates, tvAdd;
     CardView addLocationContainer;
     LinearLayout navExplore, navSaved, navUpdates, navAdd;
     ShapeableImageView ivProfile;
+    ProgressBar progressBar;
 
     // Locations
     Dialog currentLocationDialog;
@@ -44,11 +62,22 @@ public class AddLocationActivity extends AppCompatActivity {
     private static final int MAP_LOCATION_REQUEST_CODE = 100;
 
     // Parking Spots
+    private boolean isDataInitialized = false;
+    private List<ParkingSpot> allParkingSpots = new ArrayList<>();
     private List<ParkingSpot> parkingSpots = new ArrayList<>();
+    private String[] allSpotIds;
     private String[] spotIds;
     private OwnerParkingSpotsAdapter adapter;
     private RecyclerView parkingList;
     private FirebaseFirestore db;
+
+    // Optimization 1: Geocoder cache and executor service
+    private Map<String, Address> geocodeCache = new HashMap<>();
+    private ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    // Optimization 5: Cache for Firestore data
+    private List<ParkingSpot> parkingSpotCache;
+    private String[] spotIdsCache;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,15 +90,6 @@ public class AddLocationActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Profile click listener
-        ivProfile = findViewById(R.id.iv_profile);
-
-        // Bottom nav click listeners
-        navExplore = findViewById(R.id.nav_explore);
-        navSaved = findViewById(R.id.nav_saved);
-        navUpdates = findViewById(R.id.nav_updates);
-        navAdd = findViewById(R.id.nav_add);
-
         // Initialize views
         tvHeader = findViewById(R.id.tv_header);
         ivProfile = findViewById(R.id.iv_profile);
@@ -79,14 +99,19 @@ public class AddLocationActivity extends AppCompatActivity {
         tvAdd = findViewById(R.id.tv_add);
         addLocationContainer = findViewById(R.id.addLocationContainer);
         parkingList = findViewById(R.id.parking_list);
+        progressBar = findViewById(R.id.progress_bar);
+
+        // Bottom nav click listeners
+        navExplore = findViewById(R.id.nav_explore);
+        navSaved = findViewById(R.id.nav_saved);
+        navUpdates = findViewById(R.id.nav_updates);
+        navAdd = findViewById(R.id.nav_add);
 
         // Access Database
         db = FirebaseFirestore.getInstance();
 
-        // Initialize adapter
+        // Initialize adapter and RecyclerView
         parkingList.setLayoutManager(new LinearLayoutManager(this));
-
-        // Set up adapter
         adapter = new OwnerParkingSpotsAdapter(this, parkingSpots, new String[0],
                 new OwnerParkingSpotsAdapter.OnParkingSpotActionListener() {
                     @Override
@@ -101,35 +126,128 @@ public class AddLocationActivity extends AppCompatActivity {
                 });
         parkingList.setAdapter(adapter);
 
-        loadUserParkingSpots();
+        // Optimization 5: Load data with caching
+        loadUserParkingSpots(true);
 
-        addLocationContainer.setOnClickListener(v -> {
-            showAddLocationForm();
+        // Setup click listeners
+        setupClickListeners();
+
+        // Setup search functionality
+        setupSearchBar();
+
+        // Optimization 4: Initialize location tracking if needed
+        initLocationTracking();
+    }
+
+    private void setupClickListeners() {
+        addLocationContainer.setOnClickListener(v -> showAddLocationForm());
+
+        ivProfile.setOnClickListener(v -> startActivity(new Intent(this, ProfileActivity.class)));
+
+        navExplore.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
+
+        navSaved.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
+
+        navUpdates.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
+    }
+
+    private void setupSearchBar() {
+        EditText searchEditText = findViewById(R.id.et_search_spots);
+        LinearLayout searchBar = findViewById(R.id.search_bar);
+
+        // Add text change listener for real-time filtering
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterParkingSpots(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
         });
 
-        ivProfile.setOnClickListener(v -> {
-            startActivity(new Intent(this, ProfileActivity.class));
-        });
+        // Make search bar clickable with improved focus handling
+        searchBar.setClickable(true);
+        searchBar.setFocusable(true);
+        searchBar.setOnClickListener(v -> {
+            // Set focus to the EditText
+            searchEditText.requestFocus();
 
-        navExplore.setOnClickListener(v -> {
-            startActivity(new Intent(this, HomepageActivity.class));
-        });
-
-        navSaved.setOnClickListener(v -> {
-            startActivity(new Intent(this, HomepageActivity.class));
-        });
-
-        navUpdates.setOnClickListener(v -> {
-            startActivity(new Intent(this, HomepageActivity.class));
-        });
-
-        navAdd.setOnClickListener(v -> {
-
+            // Show the keyboard
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
         });
     }
 
+    private void filterParkingSpots(String query) {
+        // Handle the case when no data is loaded yet
+        if (allParkingSpots == null || allParkingSpots.isEmpty() || allSpotIds == null) {
+            return;
+        }
+
+        List<ParkingSpot> filteredSpots = new ArrayList<>();
+        List<String> filteredIds = new ArrayList<>();
+
+        if (query.isEmpty()) {
+            // If search is empty, use all spots
+            filteredSpots.addAll(allParkingSpots);
+            for (String id : allSpotIds) {
+                filteredIds.add(id);
+            }
+        } else {
+            // Convert to lowercase for case-insensitive search
+            final String lowercaseQuery = query.toLowerCase();
+
+            // Filter spots by title or address
+            for (int i = 0; i < allParkingSpots.size(); i++) {
+                ParkingSpot spot = allParkingSpots.get(i);
+                if ((spot.title != null && spot.title.toLowerCase().contains(lowercaseQuery)) ||
+                        (spot.address != null && spot.address.toLowerCase().contains(lowercaseQuery))) {
+                    filteredSpots.add(spot);
+                    // Make sure we don't go out of bounds with allSpotIds
+                    if (i < allSpotIds.length) {
+                        filteredIds.add(allSpotIds[i]);
+                    }
+                }
+            }
+        }
+
+        // Update the activity's lists to match the filtered data
+        parkingSpots.clear();
+        parkingSpots.addAll(filteredSpots);
+        spotIds = filteredIds.toArray(new String[0]);
+
+        // Update adapter with the same data
+        adapter.updateData(parkingSpots, spotIds);
+    }
+
+    // Optimization 4: Initialize location tracking
+    private void initLocationTracking() {
+        SessionManager sessionManager = new SessionManager(this);
+        if (sessionManager.getUserLat() == 0 && sessionManager.getUserLng() == 0) {
+            ReserveApplication app = (ReserveApplication) getApplicationContext();
+            app.startLocationTracking(location -> {
+                sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+
+                // Save to Firebase if user is logged in
+                String userId = sessionManager.getUserId();
+                if (userId != null) {
+                    FirebaseFirestore.getInstance().collection("users")
+                            .document(userId)
+                            .update("latitude", location.getLatitude(),
+                                    "longitude", location.getLongitude());
+                }
+
+                // Stop updates after getting location once
+                app.getLocationTracker().stopLocationUpdates();
+            });
+        }
+    }
+
     private void showAddLocationForm() {
-        // Create a dialog with a custom layout
         currentLocationDialog = new Dialog(this);
         currentLocationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         currentLocationDialog.setContentView(R.layout.dialog_add_location);
@@ -153,7 +271,6 @@ public class AddLocationActivity extends AppCompatActivity {
 
         // Set up map selection
         btnPickLocation.setOnClickListener(v -> {
-            // Launch map picker
             Intent mapIntent = new Intent(AddLocationActivity.this, MapPickerActivity.class);
             startActivityForResult(mapIntent, MAP_LOCATION_REQUEST_CODE);
         });
@@ -171,6 +288,16 @@ public class AddLocationActivity extends AppCompatActivity {
                 return;
             }
 
+            // Show loading indicator
+            progressBar.setVisibility(View.VISIBLE);
+
+            // Optimization 1: Geocode the address in background
+            if (!geocodeCache.containsKey(selectedLocationAddress.toLowerCase())) {
+                executor.execute(() -> {
+                    geocodeAddress(selectedLocationAddress);
+                });
+            }
+
             // Save to database
             DatabaseHandler db = DatabaseHandler.getInstance(this);
             db.createParkingSpace(
@@ -183,18 +310,40 @@ public class AddLocationActivity extends AppCompatActivity {
                     new DatabaseHandler.BooleanCallback() {
                         @Override
                         public void onResult(boolean result) {
-                            Toast.makeText(AddLocationActivity.this, "Location added successfully", Toast.LENGTH_SHORT).show();
-                            currentLocationDialog.dismiss();
+                            runOnUiThread(() -> {
+                                progressBar.setVisibility(View.GONE);
+                                Toast.makeText(AddLocationActivity.this, "Location added successfully", Toast.LENGTH_SHORT).show();
+                                currentLocationDialog.dismiss();
+
+                                // Refresh the list
+                                loadUserParkingSpots(false);
+                            });
                         }
 
                         @Override
                         public void onError(Exception e) {
-                            Toast.makeText(AddLocationActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            runOnUiThread(() -> {
+                                progressBar.setVisibility(View.GONE);
+                                Toast.makeText(AddLocationActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            });
                         }
                     });
         });
 
         currentLocationDialog.show();
+    }
+
+    // Optimization 1: Geocode address in background and cache result
+    private void geocodeAddress(String address) {
+        try {
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            List<Address> addresses = geocoder.getFromLocationName(address, 1);
+            if (addresses != null && !addresses.isEmpty()) {
+                geocodeCache.put(address.toLowerCase(), addresses.get(0));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -214,16 +363,38 @@ public class AddLocationActivity extends AppCompatActivity {
         }
     }
 
-    private void loadUserParkingSpots() {
+    // Optimization 5: Load user parking spots with caching
+    private void loadUserParkingSpots(boolean forceRefresh) {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
         // Show loading indicator if needed
-        // progressBar.setVisibility(View.VISIBLE);
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Use cache if available and not forcing refresh
+        if (!forceRefresh && parkingSpotCache != null && parkingSpotCache.size() > 0) {
+            parkingSpots.clear();
+            parkingSpots.addAll(parkingSpotCache);
+            spotIds = spotIdsCache.clone();
+
+            // Store complete data for filtering
+            allParkingSpots = new ArrayList<>(parkingSpotCache);
+            allSpotIds = spotIdsCache.clone();
+
+            adapter.updateData(parkingSpots, spotIds);
+            progressBar.setVisibility(View.GONE);
+
+            // Refresh in background
+            refreshParkingSpotsInBackground();
+            return;
+        }
+
+        // Source parameter determines if data comes from cache first
+        Source source = forceRefresh ? Source.SERVER : Source.DEFAULT;
 
         db.collection("parking_spaces")
                 .whereEqualTo("userId", currentUser.getUid())
-                .get()
+                .get(source)
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<ParkingSpot> newSpots = new ArrayList<>();
                     String[] newSpotIds = new String[queryDocumentSnapshots.size()];
@@ -249,142 +420,250 @@ public class AddLocationActivity extends AppCompatActivity {
                         newSpotIds[i++] = doc.getId();
                     }
 
-                    // Update existing lists instead of recreating them
+                    // Update cache
+                    parkingSpotCache = new ArrayList<>(newSpots);
+                    spotIdsCache = newSpotIds.clone();
+
+                    // Store complete data for filtering
+                    allParkingSpots = new ArrayList<>(newSpots);
+                    allSpotIds = newSpotIds.clone();
+
+                    // Update existing lists
                     parkingSpots.clear();
                     parkingSpots.addAll(newSpots);
                     spotIds = newSpotIds;
 
-                    // Only create adapter if it doesn't exist
-                    if (adapter == null) {
-                        adapter = new OwnerParkingSpotsAdapter(AddLocationActivity.this,
-                                parkingSpots, spotIds,
-                                new OwnerParkingSpotsAdapter.OnParkingSpotActionListener() {
-                                    @Override
-                                    public void onEditClick(int position, String spotId) {
-                                        editParkingSpot(position, spotId);
-                                    }
-
-                                    @Override
-                                    public void onDeleteClick(int position, String spotId) {
-                                        confirmDeleteParkingSpot(position, spotId);
-                                    }
-                                });
-                        parkingList.setAdapter(adapter);
+                    // Update UI with empty view if no spots
+                    TextView emptyView = findViewById(R.id.empty_view);
+                    if (newSpots.isEmpty()) {
+                        emptyView.setVisibility(View.VISIBLE);
+                        parkingList.setVisibility(View.GONE);
                     } else {
-                        // Update adapter's data
-                        adapter.updateData(parkingSpots, spotIds);
-                        adapter.notifyDataSetChanged();
+                        emptyView.setVisibility(View.GONE);
+                        parkingList.setVisibility(View.VISIBLE);
                     }
 
-                    // Hide loading indicator if needed
-                    // progressBar.setVisibility(View.GONE);
+                    adapter.updateData(parkingSpots, spotIds);
+                    progressBar.setVisibility(View.GONE);
+
+                    // Mark data as initialized
+                    isDataInitialized = true;
                 })
                 .addOnFailureListener(e -> {
-                    // Hide loading indicator if needed
-                    // progressBar.setVisibility(View.GONE);
-
+                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(AddLocationActivity.this, "Failed to load parking spots: " +
                             e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
+    // Optimization 5: Refresh parking spots in background
+    private void refreshParkingSpotsInBackground() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        db.collection("parking_spaces")
+                .whereEqualTo("userId", currentUser.getUid())
+                .get(Source.SERVER)
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<ParkingSpot> newSpots = new ArrayList<>();
+                    String[] newSpotIds = new String[queryDocumentSnapshots.size()];
+
+                    int i = 0;
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        String name = doc.getString("name");
+                        String location = doc.getString("location");
+                        Double rate3h = doc.getDouble("rate3h");
+                        Double rate6h = doc.getDouble("rate6h");
+                        Double rate12h = doc.getDouble("rate12h");
+                        Double rate24h = doc.getDouble("rate24h");
+
+                        String price3Hours = "₱" + String.format("%.2f", rate3h);
+                        String price6Hours = "₱" + String.format("%.2f", rate6h);
+                        String price12Hours = "₱" + String.format("%.2f", rate12h);
+                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                        newSpots.add(new ParkingSpot(name, location,
+                                R.drawable.ic_map_placeholder, price3Hours,
+                                price6Hours, price12Hours, pricePerDay));
+
+                        newSpotIds[i++] = doc.getId();
+                    }
+
+                    // Update cache
+                    parkingSpotCache = new ArrayList<>(newSpots);
+                    spotIdsCache = newSpotIds.clone();
+
+                    // If data has changed, update UI
+                    if (spotIds.length != newSpotIds.length || !parkingSpots.equals(newSpots)) {
+                        runOnUiThread(() -> {
+                            parkingSpots.clear();
+                            parkingSpots.addAll(newSpots);
+                            spotIds = newSpotIds;
+                            adapter.updateData(parkingSpots, spotIds);
+                        });
+                    }
+                });
+    }
+
     private void editParkingSpot(int position, String spotId) {
+        // Show loading indicator
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Optimization 5: Check cache first
+        if (position < parkingSpots.size()) {
+            setupEditDialog(spotId, position);
+            return;
+        }
+
         db.collection("parking_spaces").document(spotId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
-                    // Create dialog for editing
-                    Dialog editDialog = new Dialog(this);
-                    editDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-                    editDialog.setContentView(R.layout.dialog_add_location);
-
-                    Window window = editDialog.getWindow();
-                    if (window != null) {
-                        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-                    }
-
-                    // Set dialog title
-                    TextView dialogTitle = editDialog.findViewById(R.id.dialog_title);
-                    if (dialogTitle != null) {
-                        dialogTitle.setText("Edit Parking Location");
-                    }
-
-                    // Initialize dialog fields
-                    EditText etName = editDialog.findViewById(R.id.et_location_name);
-                    EditText etRate3h = editDialog.findViewById(R.id.et_rate_3h);
-                    EditText etRate6h = editDialog.findViewById(R.id.et_rate_6h);
-                    EditText etRate12h = editDialog.findViewById(R.id.et_rate_12h);
-                    EditText etRate24h = editDialog.findViewById(R.id.et_rate_24h);
-                    TextView tvAddress = editDialog.findViewById(R.id.tv_location_address);
-                    Button btnPickLocation = editDialog.findViewById(R.id.btn_pick_location);
-                    Button btnSave = editDialog.findViewById(R.id.btn_save);
-
-                    // Populate fields with existing data
-                    etName.setText(documentSnapshot.getString("name"));
-                    selectedLocationAddress = documentSnapshot.getString("location");
-                    tvAddress.setText(selectedLocationAddress);
-
-                    Double rate3h = documentSnapshot.getDouble("rate3h");
-                    Double rate6h = documentSnapshot.getDouble("rate6h");
-                    Double rate12h = documentSnapshot.getDouble("rate12h");
-                    Double rate24h = documentSnapshot.getDouble("rate24h");
-
-                    etRate3h.setText(rate3h.toString());
-                    etRate6h.setText(rate6h.toString());
-                    etRate12h.setText(rate12h.toString());
-                    etRate24h.setText(rate24h.toString());
-
-                    btnSave.setText("Update Location");
-
-                    // Set up map selection
-                    btnPickLocation.setOnClickListener(v -> {
-                        currentLocationDialog = editDialog;
-                        Intent mapIntent = new Intent(AddLocationActivity.this, MapPickerActivity.class);
-                        startActivityForResult(mapIntent, MAP_LOCATION_REQUEST_CODE);
-                    });
-
-                    // Save button click listener
-                    btnSave.setOnClickListener(v -> {
-                        // Validate inputs
-                        if (etName.getText().toString().isEmpty() ||
-                                etRate3h.getText().toString().isEmpty() ||
-                                etRate6h.getText().toString().isEmpty() ||
-                                etRate12h.getText().toString().isEmpty() ||
-                                etRate24h.getText().toString().isEmpty() ||
-                                selectedLocationAddress.isEmpty()) {
-                            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        // Update parking spot in Firestore
-                        db.collection("parking_spaces").document(spotId)
-                                .update(
-                                        "name", etName.getText().toString(),
-                                        "location", selectedLocationAddress,
-                                        "rate3h", Double.parseDouble(etRate3h.getText().toString()),
-                                        "rate6h", Double.parseDouble(etRate6h.getText().toString()),
-                                        "rate12h", Double.parseDouble(etRate12h.getText().toString()),
-                                        "rate24h", Double.parseDouble(etRate24h.getText().toString())
-                                )
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(AddLocationActivity.this, "Parking spot updated",
-                                            Toast.LENGTH_SHORT).show();
-                                    loadUserParkingSpots();  // Refresh the list
-                                    editDialog.dismiss();
-                                })
-                                .addOnFailureListener(e -> {
-                                    Toast.makeText(AddLocationActivity.this,
-                                            "Error updating parking spot: " + e.getMessage(),
-                                            Toast.LENGTH_SHORT).show();
-                                });
-                    });
-
-                    editDialog.show();
+                    progressBar.setVisibility(View.GONE);
+                    setupEditDialog(spotId, documentSnapshot);
                 })
                 .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(this, "Error loading parking spot data: " +
                             e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    private void setupEditDialog(String spotId, int position) {
+        ParkingSpot spot = parkingSpots.get(position);
+
+        // Create dialog with prepopulated fields
+        Dialog editDialog = createEditDialog(
+                spot.title,
+                spot.address,
+                spot.price3Hours.replace("₱", ""),
+                spot.price6Hours.replace("₱", ""),
+                spot.price12Hours.replace("₱", ""),
+                spot.pricePerDay.replace("₱", ""),
+                spotId
+        );
+
+        editDialog.show();
+        progressBar.setVisibility(View.GONE);
+    }
+
+    private void setupEditDialog(String spotId, DocumentSnapshot documentSnapshot) {
+        String name = documentSnapshot.getString("name");
+        String location = documentSnapshot.getString("location");
+        Double rate3h = documentSnapshot.getDouble("rate3h");
+        Double rate6h = documentSnapshot.getDouble("rate6h");
+        Double rate12h = documentSnapshot.getDouble("rate12h");
+        Double rate24h = documentSnapshot.getDouble("rate24h");
+
+        // Create dialog with prepopulated fields
+        Dialog editDialog = createEditDialog(
+                name,
+                location,
+                rate3h.toString(),
+                rate6h.toString(),
+                rate12h.toString(),
+                rate24h.toString(),
+                spotId
+        );
+
+        editDialog.show();
+    }
+
+    private Dialog createEditDialog(String name, String location, String rate3h,
+                                    String rate6h, String rate12h, String rate24h,
+                                    String spotId) {
+        Dialog editDialog = new Dialog(this);
+        editDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        editDialog.setContentView(R.layout.dialog_add_location);
+
+        Window window = editDialog.getWindow();
+        if (window != null) {
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // Set dialog title
+        TextView dialogTitle = editDialog.findViewById(R.id.dialog_title);
+        if (dialogTitle != null) {
+            dialogTitle.setText("Edit Parking Location");
+        }
+
+        // Initialize dialog fields
+        EditText etName = editDialog.findViewById(R.id.et_location_name);
+        EditText etRate3h = editDialog.findViewById(R.id.et_rate_3h);
+        EditText etRate6h = editDialog.findViewById(R.id.et_rate_6h);
+        EditText etRate12h = editDialog.findViewById(R.id.et_rate_12h);
+        EditText etRate24h = editDialog.findViewById(R.id.et_rate_24h);
+        TextView tvAddress = editDialog.findViewById(R.id.tv_location_address);
+        Button btnPickLocation = editDialog.findViewById(R.id.btn_pick_location);
+        Button btnSave = editDialog.findViewById(R.id.btn_save);
+
+        // Populate fields with existing data
+        etName.setText(name);
+        selectedLocationAddress = location;
+        tvAddress.setText(selectedLocationAddress);
+
+        etRate3h.setText(rate3h);
+        etRate6h.setText(rate6h);
+        etRate12h.setText(rate12h);
+        etRate24h.setText(rate24h);
+
+        btnSave.setText("Update Location");
+
+        // Set up map selection
+        btnPickLocation.setOnClickListener(v -> {
+            currentLocationDialog = editDialog;
+            Intent mapIntent = new Intent(AddLocationActivity.this, MapPickerActivity.class);
+            startActivityForResult(mapIntent, MAP_LOCATION_REQUEST_CODE);
+        });
+
+        // Save button click listener
+        btnSave.setOnClickListener(v -> {
+            // Validate inputs
+            if (etName.getText().toString().isEmpty() ||
+                    etRate3h.getText().toString().isEmpty() ||
+                    etRate6h.getText().toString().isEmpty() ||
+                    etRate12h.getText().toString().isEmpty() ||
+                    etRate24h.getText().toString().isEmpty() ||
+                    selectedLocationAddress.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            progressBar.setVisibility(View.VISIBLE);
+
+            // Optimization 1: Geocode in background if needed
+            if (!geocodeCache.containsKey(selectedLocationAddress.toLowerCase())) {
+                executor.execute(() -> {
+                    geocodeAddress(selectedLocationAddress);
+                });
+            }
+
+            // Update parking spot in Firestore
+            db.collection("parking_spaces").document(spotId)
+                    .update(
+                            "name", etName.getText().toString(),
+                            "location", selectedLocationAddress,
+                            "rate3h", Double.parseDouble(etRate3h.getText().toString()),
+                            "rate6h", Double.parseDouble(etRate6h.getText().toString()),
+                            "rate12h", Double.parseDouble(etRate12h.getText().toString()),
+                            "rate24h", Double.parseDouble(etRate24h.getText().toString())
+                    )
+                    .addOnSuccessListener(aVoid -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(AddLocationActivity.this, "Parking spot updated",
+                                Toast.LENGTH_SHORT).show();
+                        loadUserParkingSpots(true);  // Force refresh the list
+                        editDialog.dismiss();
+                    })
+                    .addOnFailureListener(e -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(AddLocationActivity.this,
+                                "Error updating parking spot: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    });
+        });
+
+        return editDialog;
     }
 
     private void confirmDeleteParkingSpot(int position, String spotId) {
@@ -399,14 +678,19 @@ public class AddLocationActivity extends AppCompatActivity {
     }
 
     private void deleteParkingSpot(int position, String spotId) {
+        progressBar.setVisibility(View.VISIBLE);
+
         db.collection("parking_spaces").document(spotId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
+                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(this, "Parking spot deleted",
                             Toast.LENGTH_SHORT).show();
 
-                    // Update local data
-                    parkingSpots.remove(position);
+                    // Optimization 3: Update lists more efficiently
+                    if (position < parkingSpots.size()) {
+                        parkingSpots.remove(position);
+                    }
 
                     // Create new spotIds array without the deleted item
                     String[] newSpotIds = new String[spotIds.length - 1];
@@ -418,9 +702,14 @@ public class AddLocationActivity extends AppCompatActivity {
                     }
                     spotIds = newSpotIds;
 
-                    adapter.notifyDataSetChanged();
+                    // Update cache
+                    parkingSpotCache = new ArrayList<>(parkingSpots);
+                    spotIdsCache = spotIds.clone();
+
+                    adapter.updateData(parkingSpots, spotIds);
                 })
                 .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
                     Toast.makeText(this, "Error deleting parking spot: " +
                             e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
@@ -429,7 +718,26 @@ public class AddLocationActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Refresh list when returning to this activity
-        loadUserParkingSpots();
+
+        // Only load parking spots if we don't have data yet
+        // or if we're returning from another activity
+        if (!isDataInitialized) {
+            loadUserParkingSpots(true);
+            isDataInitialized = true;
+        } else {
+            // Refresh data in background without showing loading indicator
+            refreshParkingSpotsInBackground();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Stop location updates when app is in background to save battery
+        ReserveApplication app = (ReserveApplication) getApplicationContext();
+        if (app.getLocationTracker() != null) {
+            app.getLocationTracker().stopLocationUpdates();
+        }
     }
 }

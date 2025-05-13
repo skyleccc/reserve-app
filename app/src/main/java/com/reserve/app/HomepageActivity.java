@@ -1,41 +1,65 @@
 package com.reserve.app;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
-
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
-
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Source;
 
 public class HomepageActivity extends AppCompatActivity {
     private List<ParkingSpot> parkingSpots = new ArrayList<>();
+    private List<ParkingSpotWithDistance> allSpotsWithDistance = new ArrayList<>();
     private ParkingSpotAdapter adapter;
+    TextView tvParkingTitle;
     private boolean isDataInitialized = false;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
     private static final double DEFAULT_MAX_DISTANCE_KM = 5.0; // 5 kilometers default
+
+    // Optimization 1: Geocoder cache to avoid redundant geocoding
+    private Map<String, Address> geocodeCache = new HashMap<>();
+    private ExecutorService executor = Executors.newFixedThreadPool(4);
+
+    // Optimization 5: Cache for Firestore data
+    private List<ParkingSpot> parkingSpotCache;
+
+    // Counter for geocoding completions
+    private int geocodingCounter = 0;
+    private int totalGeocodingTasks = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +73,7 @@ public class HomepageActivity extends AppCompatActivity {
         });
 
         // Parking spots list
+        tvParkingTitle = findViewById(R.id.tv_parking_spots_title);
         RecyclerView parkingList = findViewById(R.id.parking_list);
         parkingList.setLayoutManager(new LinearLayoutManager(this));
         adapter = new ParkingSpotAdapter(this, parkingSpots);
@@ -59,10 +84,12 @@ public class HomepageActivity extends AppCompatActivity {
         LinearLayout navSaved = findViewById(R.id.nav_saved);
         LinearLayout navUpdates = findViewById(R.id.nav_updates);
         LinearLayout navAdd = findViewById(R.id.nav_add);
+        ShapeableImageView navProfile = findViewById(R.id.iv_profile);
 
         // Request location permissions if needed
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED) {
+            // Optimization 4: More efficient location tracking
             startLocationTracking();
         } else {
             ActivityCompat.requestPermissions(this,
@@ -72,30 +99,39 @@ public class HomepageActivity extends AppCompatActivity {
 
         // Initial load parking spots
         if (!isDataInitialized) {
+            // Optimization 5: Using cache
             loadNearbyParkingSpots(true); // true indicates initial load
         }
 
-        navExplore.setOnClickListener(v -> {
+        // Setup search functionality
+        setupSearchBar();
 
+        navExplore.setOnClickListener(v -> {
+            // Already on explore page
         });
 
         navSaved.setOnClickListener(v -> {
-
+            // Navigate to saved
         });
 
         navUpdates.setOnClickListener(v -> {
-
+            // Navigate to updates
         });
 
         navAdd.setOnClickListener(v -> {
             startActivity(new Intent(this, AddLocationActivity.class));
+        });
+
+        navProfile.setOnClickListener(v -> {
+            startActivity(new Intent(this, ProfileActivity.class));
         });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Only start location tracking if we don't already have a location
+
+        // Optimization 4: Only start location tracking if we don't already have a location
         SessionManager sessionManager = new SessionManager(this);
         if (sessionManager.getUserLat() == 0 && sessionManager.getUserLng() == 0) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -119,6 +155,15 @@ public class HomepageActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Shutdown executor service
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdown();
+        }
+    }
+
+    @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_LOCATION_PERMISSION) {
@@ -131,32 +176,39 @@ public class HomepageActivity extends AppCompatActivity {
         }
     }
 
+    // Optimization 4: Improved location tracking
     private void startLocationTracking() {
         SessionManager sessionManager = new SessionManager(this);
         ReserveApplication app = (ReserveApplication) getApplicationContext();
 
-        app.startLocationTracking(location -> {
-            // Save location to session
-            sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+        // Only start if we don't have a location yet
+        if (sessionManager.getUserLat() == 0 && sessionManager.getUserLng() == 0) {
+            app.startLocationTracking(location -> {
+                // Save location to session
+                sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
 
-            // Save to Firebase if user is logged in
-            String userId = sessionManager.getUserId();
-            if (userId != null) {
-                FirebaseFirestore.getInstance().collection("users")
-                        .document(userId)
-                        .update("latitude", location.getLatitude(),
-                                "longitude", location.getLongitude());
-            }
+                // Save to Firebase if user is logged in
+                String userId = sessionManager.getUserId();
+                if (userId != null) {
+                    FirebaseFirestore.getInstance().collection("users")
+                            .document(userId)
+                            .update("latitude", location.getLatitude(),
+                                    "longitude", location.getLongitude());
+                }
 
-            // Load nearby parking spots after getting location
-            loadNearbyParkingSpots(true);
+                // Load nearby parking spots after getting location
+                loadNearbyParkingSpots(true);
 
-            // Stop continuous updates after getting location once
-            // Remove this line if you want continuous tracking
-            app.getLocationTracker().stopLocationUpdates();
-        });
+                // Stop continuous updates after getting location once
+                app.getLocationTracker().stopLocationUpdates();
+            });
+        } else {
+            // Use cached location and update in background
+            loadNearbyParkingSpots(false);
+        }
     }
 
+    // Optimization 5: Cache for Firestore data
     private void loadNearbyParkingSpots(boolean showLoadingIndicator) {
         // Get reference to the progress bar
         ProgressBar progressBar = findViewById(R.id.progress_bar);
@@ -179,17 +231,20 @@ public class HomepageActivity extends AppCompatActivity {
             return;
         }
 
-        // Create temporary lists to hold new data
-        List<ParkingSpot> newSpots = new ArrayList<>();
-        List<ParkingSpotWithDistance> newSpotsWithDistance = new ArrayList<>();
+        // Check cache first
+        if (parkingSpotCache != null && !parkingSpotCache.isEmpty() && !showLoadingIndicator) {
+            processParkingSpots(parkingSpotCache, userLat, userLng, showLoadingIndicator);
+            // Refresh cache in background
+            refreshParkingSpotsCache(false);
+            return;
+        }
 
-        // Set flag to indicate data is initialized
-        isDataInitialized = true;
-
-        // Query all parking spaces from Firestore
+        // Query all parking spaces from Firestore with caching
         FirebaseFirestore.getInstance().collection("parking_spaces")
-                .get()
+                .get(Source.SERVER)  // Try cache first, then network
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<ParkingSpot> newSpots = new ArrayList<>();
+
                     for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
                         // Extract data from document
                         String name = doc.getString("name");
@@ -211,20 +266,17 @@ public class HomepageActivity extends AppCompatActivity {
                                 price6Hours, price12Hours, pricePerDay);
 
                         newSpots.add(spot);
-
-                        // Geocode the address to get coordinates
-                        geocodeAddressAndAddToList(spot, location, userLat, userLng, newSpotsWithDistance, newSpots);
                     }
 
-                    // Hide loading indicator
+                    // Update cache
+                    parkingSpotCache = new ArrayList<>(newSpots);
+
+                    // Process spots
+                    processParkingSpots(newSpots, userLat, userLng, showLoadingIndicator);
+
+                    // Hide loading indicator on success
                     if (showLoadingIndicator) {
                         progressBar.setVisibility(View.GONE);
-                    }
-
-                    // If no spots were found
-                    if (newSpots.isEmpty() && showLoadingIndicator) {
-                        Toast.makeText(HomepageActivity.this, "No parking spots found",
-                                Toast.LENGTH_SHORT).show();
                     }
                 })
                 .addOnFailureListener(e -> {
@@ -237,68 +289,238 @@ public class HomepageActivity extends AppCompatActivity {
                 });
     }
 
-    private void filterAndUpdateParkingSpotsList(List<ParkingSpotWithDistance> spotsWithDistance, double maxDistanceKm) {
-        // Sort by distance
-        Collections.sort(spotsWithDistance, (s1, s2) -> Double.compare(s1.distance, s2.distance));
+    // Helper method to refresh cache in background
+    private void refreshParkingSpotsCache(boolean showLoading) {
+        FirebaseFirestore.getInstance().collection("parking_spaces")
+                .get(Source.SERVER)  // Force server refresh
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<ParkingSpot> newSpots = new ArrayList<>();
 
-        // Create a new list for filtered spots
-        List<ParkingSpot> filteredSpots = new ArrayList<>();
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        // Extract data from document
+                        String name = doc.getString("name");
+                        String location = doc.getString("location");
+                        Double rate3h = doc.getDouble("rate3h");
+                        Double rate6h = doc.getDouble("rate6h");
+                        Double rate12h = doc.getDouble("rate12h");
+                        Double rate24h = doc.getDouble("rate24h");
 
-        // Filter by maximum distance
-        for (ParkingSpotWithDistance spd : spotsWithDistance) {
-            if (spd.distance <= maxDistanceKm) {
-                filteredSpots.add(spd.spot);
-            }
+                        // Format prices
+                        String price3Hours = "₱" + String.format("%.2f", rate3h);
+                        String price6Hours = "₱" + String.format("%.2f", rate6h);
+                        String price12Hours = "₱" + String.format("%.2f", rate12h);
+                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                        // Create parking spot object
+                        ParkingSpot spot = new ParkingSpot(name, location,
+                                R.drawable.ic_map_placeholder, price3Hours,
+                                price6Hours, price12Hours, pricePerDay);
+
+                        newSpots.add(spot);
+                    }
+
+                    // Update cache for next time
+                    parkingSpotCache = new ArrayList<>(newSpots);
+                });
+    }
+
+    private void processParkingSpots(List<ParkingSpot> spots, double userLat, double userLng,
+                                     boolean showLoadingIndicator) {
+        // Reset counters
+        geocodingCounter = 0;
+        totalGeocodingTasks = spots.size();
+
+        // Reset the list that will hold spots with distance
+        List<ParkingSpotWithDistance> newSpotsWithDistance = new ArrayList<>();
+
+        // Show loading only if flag is set
+        ProgressBar progressBar = findViewById(R.id.progress_bar);
+        if (showLoadingIndicator) {
+            progressBar.setVisibility(View.VISIBLE);
         }
+
+        // Process each spot
+        for (ParkingSpot spot : spots) {
+            geocodeAddressAndAddToList(spot, spot.address, userLat, userLng,
+                    newSpotsWithDistance, spots);
+        }
+    }
+
+    // Optimization 3: More efficient data filtering
+    private void filterAndUpdateParkingSpotsList(List<ParkingSpotWithDistance> spotsWithDistance, double maxDistanceKm) {
+        // Store all spots with distance for searching
+        allSpotsWithDistance = new ArrayList<>(spotsWithDistance);
+
+        // Optimization 3: More efficient filtering using streams
+        List<ParkingSpot> filteredSpots = spotsWithDistance.stream()
+                .filter(spd -> spd.distance <= maxDistanceKm)
+                .sorted(Comparator.comparingDouble(spd -> spd.distance))
+                .map(spd -> spd.spot)
+                .collect(Collectors.toList());
 
         // Only update if we have new data
         if (!filteredSpots.isEmpty()) {
-            // Now update the main list
+            // Update the main list
             parkingSpots.clear();
             parkingSpots.addAll(filteredSpots);
 
             // Update the existing adapter
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
-            } else {
-                // Only create a new adapter if it doesn't exist
-                adapter = new ParkingSpotAdapter(this, parkingSpots);
-                RecyclerView recyclerView = findViewById(R.id.parking_list);
-                recyclerView.setAdapter(adapter);
             }
         }
     }
+
+    // Optimization 1: Improved geocoding with caching and background processing
     private void geocodeAddressAndAddToList(ParkingSpot spot, String address, double userLat, double userLng,
-                                            List<ParkingSpotWithDistance> spotsWithDistance, List<ParkingSpot> spots) {
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                                             List<ParkingSpotWithDistance> spotsWithDistance, List<ParkingSpot> spots) {
         try {
-            List<Address> addresses = geocoder.getFromLocationName(address, 1);
-            if (addresses != null && !addresses.isEmpty()) {
-                Address location = addresses.get(0);
-                double spotLat = location.getLatitude();
-                double spotLng = location.getLongitude();
+            // Create a cache for geocoded addresses
+            if (geocodeCache.containsKey(address)) {
+                // Use cached coordinates
+                processGeocodedLocation(spot, geocodeCache.get(address), userLat, userLng, spotsWithDistance, spots);
+                return;
+            }
 
-                // Calculate distance between user and parking spot
-                double distance = calculateDistance(userLat, userLng, spotLat, spotLng);
+            // Show loading indicator for first geocoding request only
+            if (geocodingCounter == 0 && spotsWithDistance.isEmpty()) {
+                runOnUiThread(() -> findViewById(R.id.progress_bar).setVisibility(View.VISIBLE));
+            }
 
-                spotsWithDistance.add(new ParkingSpotWithDistance(spot, distance));
+            // Run geocoding in background thread
+            executor.execute(() -> {
+                try {
+                    Geocoder geocoder = new Geocoder(HomepageActivity.this, Locale.getDefault());
+                    List<Address> addresses = geocoder.getFromLocationName(address, 1);
 
-                // When all geocoding is done, sort and update UI
-                if (spotsWithDistance.size() == spots.size()) {
-                    filterAndUpdateParkingSpotsList(spotsWithDistance, DEFAULT_MAX_DISTANCE_KM);
-                    // Hide progress bar when all geocoding is complete
-                    ProgressBar progressBar = findViewById(R.id.progress_bar);
-                    progressBar.setVisibility(View.GONE);
+                    if (addresses != null && !addresses.isEmpty()) {
+                        // Cache the result
+                        geocodeCache.put(address, addresses.get(0));
+
+                        // Process on main thread
+                        runOnUiThread(() ->
+                                processGeocodedLocation(spot, addresses.get(0), userLat, userLng,
+                                        spotsWithDistance, spots)
+                        );
+                    } else {
+                        // Handle failed geocoding
+                        runOnUiThread(() -> incrementGeocodingCounter(spotsWithDistance, spots));
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    // Ensure counter still increments on error
+                    runOnUiThread(() -> incrementGeocodingCounter(spotsWithDistance, spots));
                 }
-            }
-        } catch (IOException e) {
+            });
+        } catch (Exception e) {
             e.printStackTrace();
-            // Also handle errors in geocoding
-            if (spotsWithDistance.size() == spots.size()) {
-                ProgressBar progressBar = findViewById(R.id.progress_bar);
-                progressBar.setVisibility(View.GONE);
-            }
+            incrementGeocodingCounter(spotsWithDistance, spots);
         }
+    }
+
+    private void processGeocodedLocation(ParkingSpot spot, Address location, double userLat, double userLng,
+                                         List<ParkingSpotWithDistance> spotsWithDistance, List<ParkingSpot> spots) {
+        double spotLat = location.getLatitude();
+        double spotLng = location.getLongitude();
+
+        // Calculate distance between user and parking spot
+        double distance = calculateDistance(userLat, userLng, spotLat, spotLng);
+
+        spotsWithDistance.add(new ParkingSpotWithDistance(spot, distance));
+
+        // Increment counter and check if all geocoding is done
+        incrementGeocodingCounter(spotsWithDistance, spots);
+    }
+
+    private synchronized void incrementGeocodingCounter(List<ParkingSpotWithDistance> spotsWithDistance, List<ParkingSpot> spots) {
+        geocodingCounter++;
+
+        // Check if all geocoding tasks are completed
+        if (geocodingCounter >= totalGeocodingTasks) {
+            // Sort by distance
+            Collections.sort(spotsWithDistance, Comparator.comparingDouble(spd -> spd.distance));
+
+            // Update UI with results
+            filterAndUpdateParkingSpotsList(spotsWithDistance, DEFAULT_MAX_DISTANCE_KM);
+
+            // Mark data as initialized
+            isDataInitialized = true;
+
+            // Hide progress bar
+            findViewById(R.id.progress_bar).setVisibility(View.GONE);
+        }
+    }
+
+    private void setupSearchBar() {
+        EditText searchEditText = findViewById(R.id.search_edit_text);
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterParkingSpots(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        // Make search bar clickable to open keyboard
+        LinearLayout searchBar = findViewById(R.id.search_bar);
+        searchBar.setClickable(true);
+        searchBar.setFocusable(true);
+        searchBar.setOnClickListener(v -> {
+            // Set focus to the EditText
+            searchEditText.requestFocus();
+
+            // Show the keyboard
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT);
+        });
+
+        // Make map container clickable to open map
+        CardView searchMap = findViewById(R.id.map_button_container);
+        searchMap.setOnClickListener(v -> {
+            openMapView();
+        });
+    }
+
+    private void openMapView() {
+        startActivity(new Intent(this, MapSearchActivity.class));
+    }
+
+    // Optimization 3: More efficient filtering
+    private void filterParkingSpots(String query) {
+        if (query.isEmpty()) {
+            // If search is empty, restore filtered spots based on distance
+            tvParkingTitle.setText("Parking Spots Near You");
+
+            // Use stream for more efficient filtering
+            List<ParkingSpot> filteredSpots = allSpotsWithDistance.stream()
+                    .filter(spd -> spd.distance <= DEFAULT_MAX_DISTANCE_KM)
+                    .sorted(Comparator.comparingDouble(spd -> spd.distance))
+                    .map(spd -> spd.spot)
+                    .collect(Collectors.toList());
+
+            adapter.updateSpots(filteredSpots);
+            return;
+        }
+
+        // Change title to show we're displaying search results
+        tvParkingTitle.setText("Search Results");
+
+        // Filter spots by name using stream
+        final String lowercaseQuery = query.toLowerCase();
+        List<ParkingSpot> filteredSpots = allSpotsWithDistance.stream()
+                .filter(spd -> spd.spot.title.toLowerCase().contains(lowercaseQuery))
+                .sorted(Comparator.comparingDouble(spd -> spd.distance))
+                .map(spd -> spd.spot)
+                .collect(Collectors.toList());
+
+        adapter.updateSpots(filteredSpots);
     }
 
     // Helper class to store spot with its distance
