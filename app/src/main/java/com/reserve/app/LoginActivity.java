@@ -30,6 +30,7 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginActivity extends AppCompatActivity {
@@ -63,9 +64,11 @@ public class LoginActivity extends AppCompatActivity {
                     REQUEST_LOCATION_PERMISSION);
         }
 
+        // Initialize the database handler
+        databaseHandler = DatabaseHandler.getInstance(this);
+
         // Check if user is already logged in
-        mAuth = FirebaseAuth.getInstance();
-        user = mAuth.getCurrentUser();
+        user = databaseHandler.getCurrentUser();
         sessionManager = new SessionManager(LoginActivity.this);
 
         if (user != null && sessionManager.isLoggedIn()) {
@@ -77,35 +80,25 @@ public class LoginActivity extends AppCompatActivity {
         } else if (user != null && !sessionManager.isLoggedIn()) {
             // Firebase says user is logged in but session data is missing
             // Need to populate the session data from Firestore
-            FirebaseFirestore.getInstance().collection("users").document(user.getUid())
-                    .get()
-                    .addOnSuccessListener(document -> {
-                        if (document.exists()) {
-                            // Create session from Firestore data
-                            sessionManager.saveUserSession(
-                                    user.getUid(),
-                                    document.getString("firstName"),
-                                    document.getString("lastName"),
-                                    document.getString("email"),
-                                    document.getString("phone"),
-                                    document.getString("authType")
-                            );
-
-                            // Now navigate to homepage
-                            Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            // User exists in Auth but not in Firestore - sign out
-                            FirebaseAuth.getInstance().signOut();
-                            sessionManager.clearSession();
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        // Error retrieving data - sign out to be safe
-                        FirebaseAuth.getInstance().signOut();
+            databaseHandler.getUserData(user.getUid(), new DatabaseHandler.DocumentCallback() {
+                @Override
+                public void onSuccess(DocumentSnapshot document) {
+                    if (document.exists()) {
+                        // Existing code to save user session
+                    } else {
+                        // Handle missing user data
+                        databaseHandler.signOut();
                         sessionManager.clearSession();
-                    });
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    // Error retrieving data - sign out to be safe
+                    databaseHandler.signOut();
+                    sessionManager.clearSession();
+                }
+            });
             return;
         }
 
@@ -125,17 +118,11 @@ public class LoginActivity extends AppCompatActivity {
 
         initializeUI();
 
-
         loginButton.setOnClickListener(v -> { loginUserEmail(); });
-
-        loginGoogleButton.setOnClickListener(v -> {
-            loginUserGoogle();
-        });
-
+        loginGoogleButton.setOnClickListener(v -> { loginUserGoogle(); });
         loginAppleButton.setOnClickListener(v -> {
             // Handle Apple login button click
         });
-
         createAccountButton.setOnClickListener(v -> {
             Intent intent = new Intent(LoginActivity.this, CreateAccountActivity.class);
             startActivity(intent);
@@ -168,31 +155,40 @@ public class LoginActivity extends AppCompatActivity {
         loginButton.setEnabled(false);
         loginButton.setText("Logging In...");
 
-        databaseHandler = DatabaseHandler.getInstance(this);
         databaseHandler.signInUser(email, password, new DatabaseHandler.AuthCallback() {
             @Override
             public void onSuccess(FirebaseUser user) {
-                // Get additional user data from Firestore
-                FirebaseFirestore.getInstance().collection("users").document(user.getUid())
-                        .get()
-                        .addOnSuccessListener(document -> {
-                            if (document.exists()) {
-                                // Save user session
-                                sessionManager.saveUserSession(
-                                        user.getUid(),
-                                        document.getString("firstName"),
-                                        document.getString("lastName"),
-                                        document.getString("email"),
-                                        document.getString("phone"),
-                                        document.getString("authType")
-                                );
+                // Get additional user data from database
+                databaseHandler.getUserData(user.getUid(), new DatabaseHandler.DocumentCallback() {
+                    @Override
+                    public void onSuccess(DocumentSnapshot document) {
+                        if (document.exists()) {
+                            // Save user session
+                            sessionManager.saveUserSession(
+                                    user.getUid(),
+                                    document.getString("firstName"),
+                                    document.getString("lastName"),
+                                    document.getString("email"),
+                                    document.getString("phone"),
+                                    document.getString("authType")
+                            );
 
-                                // Navigate to homepage
-                                Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
-                                startActivity(intent);
-                                finish();
-                            }
-                        });
+                            // Navigate to homepage
+                            Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        // Handle document retrieval failure
+                        errorMessageTextView.setText("Failed to retrieve user data: " + e.getMessage());
+                        errorMessageTextView.setVisibility(View.VISIBLE);
+                        loginButton.setEnabled(true);
+                        loginButton.setText("Continue");
+                    }
+                });
             }
 
             @Override
@@ -246,64 +242,68 @@ public class LoginActivity extends AppCompatActivity {
         // Get the ID token from the Google Sign-In account
         AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
 
-        // Authenticate with Firebase
-        databaseHandler = DatabaseHandler.getInstance(this);
-        FirebaseAuth.getInstance().signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
-                    loginGoogleButton.setEnabled(true);
+        // Authenticate with Firebase using DatabaseHandler
+        loginGoogleButton.setEnabled(false);
+        databaseHandler.signInWithGoogle(credential, new DatabaseHandler.AuthCallback() {
+            @Override
+            public void onSuccess(FirebaseUser user) {
+                // Check if the user has phone number in Firestore
+                checkUserProfileCompletion(user, account);
+                loginGoogleButton.setEnabled(true);
+            }
 
-                    if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
-                        // Check if the user has phone number in Firestore
-                        FirebaseUser user = task.getResult().getUser();
-                        checkUserProfileCompletion(user, account);
-                    } else {
-                        // Handle failure
-                        String errorMessage = task.getException() != null ? task.getException().getMessage() : "Authentication failed";
-                        errorMessageTextView.setText("Authentication failed: " + errorMessage);
-                        errorMessageTextView.setVisibility(View.VISIBLE);
-                    }
-                });
+            @Override
+            public void onFailure(Exception e) {
+                loginGoogleButton.setEnabled(true);
+                // Handle failure
+                String errorMessage = e != null ? e.getMessage() : "Authentication failed";
+                errorMessageTextView.setText("Authentication failed: " + errorMessage);
+                errorMessageTextView.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     private void checkUserProfileCompletion(FirebaseUser user, GoogleSignInAccount account) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("users").document(user.getUid()).get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        if (task.getResult().exists() && task.getResult().get("phone") != null) {
-                            // User has complete profile, proceed to homepage
-                            Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            // User needs to complete their profile
-                            String firstName = account.getGivenName() != null ? account.getGivenName() : "";
-                            String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
-                            String email = account.getEmail();
-                            String idToken = account.getIdToken();
+        databaseHandler.getUserData(user.getUid(), new DatabaseHandler.DocumentCallback() {
+            @Override
+            public void onSuccess(DocumentSnapshot document) {
+                if (document.exists() && document.get("phone") != null) {
+                    // User has complete profile, proceed to homepage
+                    Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    // User needs to complete their profile
+                    String firstName = account.getGivenName() != null ? account.getGivenName() : "";
+                    String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
+                    String email = account.getEmail();
+                    String idToken = account.getIdToken();
 
-                            Intent intent = new Intent(LoginActivity.this, CompleteGoogleSignupActivity.class);
-                            intent.putExtra("firstName", firstName);
-                            intent.putExtra("lastName", lastName);
-                            intent.putExtra("email", email);
-                            intent.putExtra("idToken", idToken);
-                            startActivity(intent);
-                        }
-                    } else {
-                        // Couldn't verify user profile - proceed to completion screen to be safe
-                        String firstName = account.getGivenName() != null ? account.getGivenName() : "";
-                        String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
-                        String email = account.getEmail();
-                        String idToken = account.getIdToken();
+                    Intent intent = new Intent(LoginActivity.this, CompleteGoogleSignupActivity.class);
+                    intent.putExtra("firstName", firstName);
+                    intent.putExtra("lastName", lastName);
+                    intent.putExtra("email", email);
+                    intent.putExtra("idToken", idToken);
+                    startActivity(intent);
+                }
+            }
 
-                        Intent intent = new Intent(LoginActivity.this, CompleteGoogleSignupActivity.class);
-                        intent.putExtra("firstName", firstName);
-                        intent.putExtra("lastName", lastName);
-                        intent.putExtra("email", email);
-                        intent.putExtra("idToken", idToken);
-                        startActivity(intent);
-                    }
-                });
+            @Override
+            public void onFailure(Exception e) {
+                // Couldn't verify user profile - proceed to completion screen to be safe
+                String firstName = account.getGivenName() != null ? account.getGivenName() : "";
+                String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
+                String email = account.getEmail();
+                String idToken = account.getIdToken();
+
+                Intent intent = new Intent(LoginActivity.this, CompleteGoogleSignupActivity.class);
+                intent.putExtra("firstName", firstName);
+                intent.putExtra("lastName", lastName);
+                intent.putExtra("email", email);
+                intent.putExtra("idToken", idToken);
+                startActivity(intent);
+            }
+        });
     }
 
     @Override

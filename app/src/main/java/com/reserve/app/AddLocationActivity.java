@@ -69,7 +69,7 @@ public class AddLocationActivity extends AppCompatActivity {
     private String[] spotIds;
     private OwnerParkingSpotsAdapter adapter;
     private RecyclerView parkingList;
-    private FirebaseFirestore db;
+    private DatabaseHandler dbHandler;
 
     // Optimization 1: Geocoder cache and executor service
     private Map<String, Address> geocodeCache = new HashMap<>();
@@ -108,7 +108,7 @@ public class AddLocationActivity extends AppCompatActivity {
         navAdd = findViewById(R.id.nav_add);
 
         // Access Database
-        db = FirebaseFirestore.getInstance();
+        dbHandler = DatabaseHandler.getInstance(this);
 
         // Initialize adapter and RecyclerView
         parkingList.setLayoutManager(new LinearLayoutManager(this));
@@ -235,10 +235,18 @@ public class AddLocationActivity extends AppCompatActivity {
                 // Save to Firebase if user is logged in
                 String userId = sessionManager.getUserId();
                 if (userId != null) {
-                    FirebaseFirestore.getInstance().collection("users")
-                            .document(userId)
-                            .update("latitude", location.getLatitude(),
-                                    "longitude", location.getLongitude());
+                    dbHandler.updateUserLocation(userId, location.getLatitude(), location.getLongitude(),
+                            new DatabaseHandler.BooleanCallback() {
+                                @Override
+                                public void onResult(boolean result) {
+                                    // Success handled silently
+                                }
+
+                                @Override
+                                public void onError(Exception e) {
+                                    // Optional: you could log the error or show a toast
+                                }
+                            });
                 }
 
                 // Stop updates after getting location once
@@ -298,9 +306,7 @@ public class AddLocationActivity extends AppCompatActivity {
                 });
             }
 
-            // Save to database
-            DatabaseHandler db = DatabaseHandler.getInstance(this);
-            db.createParkingSpace(
+            dbHandler.createParkingSpace(
                     etLocationName.getText().toString(),
                     selectedLocationAddress,
                     Double.parseDouble(etRate3h.getText().toString()),
@@ -365,9 +371,6 @@ public class AddLocationActivity extends AppCompatActivity {
 
     // Optimization 5: Load user parking spots with caching
     private void loadUserParkingSpots(boolean forceRefresh) {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) return;
-
         // Show loading indicator if needed
         progressBar.setVisibility(View.VISIBLE);
 
@@ -389,120 +392,73 @@ public class AddLocationActivity extends AppCompatActivity {
             return;
         }
 
-        // Source parameter determines if data comes from cache first
-        Source source = forceRefresh ? Source.SERVER : Source.DEFAULT;
+        dbHandler.getUserParkingSpots(forceRefresh, new DatabaseHandler.ParkingSpotsCallback() {
+            @Override
+            public void onSuccess(List<ParkingSpot> newSpots, String[] newSpotIds) {
+                // Update cache
+                parkingSpotCache = new ArrayList<>(newSpots);
+                spotIdsCache = newSpotIds.clone();
 
-        db.collection("parking_spaces")
-                .whereEqualTo("userId", currentUser.getUid())
-                .get(source)
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<ParkingSpot> newSpots = new ArrayList<>();
-                    String[] newSpotIds = new String[queryDocumentSnapshots.size()];
+                // Store complete data for filtering
+                allParkingSpots = new ArrayList<>(newSpots);
+                allSpotIds = newSpotIds.clone();
 
-                    int i = 0;
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
+                // Update existing lists
+                parkingSpots.clear();
+                parkingSpots.addAll(newSpots);
+                spotIds = newSpotIds;
 
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+                // Update UI with empty view if no spots
+                TextView emptyView = findViewById(R.id.empty_view);
+                if (newSpots.isEmpty()) {
+                    emptyView.setVisibility(View.VISIBLE);
+                    parkingList.setVisibility(View.GONE);
+                } else {
+                    emptyView.setVisibility(View.GONE);
+                    parkingList.setVisibility(View.VISIBLE);
+                }
 
-                        newSpots.add(new ParkingSpot(name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay));
+                adapter.updateData(parkingSpots, spotIds);
+                progressBar.setVisibility(View.GONE);
 
-                        newSpotIds[i++] = doc.getId();
-                    }
+                // Mark data as initialized
+                isDataInitialized = true;
+            }
 
-                    // Update cache
-                    parkingSpotCache = new ArrayList<>(newSpots);
-                    spotIdsCache = newSpotIds.clone();
-
-                    // Store complete data for filtering
-                    allParkingSpots = new ArrayList<>(newSpots);
-                    allSpotIds = newSpotIds.clone();
-
-                    // Update existing lists
-                    parkingSpots.clear();
-                    parkingSpots.addAll(newSpots);
-                    spotIds = newSpotIds;
-
-                    // Update UI with empty view if no spots
-                    TextView emptyView = findViewById(R.id.empty_view);
-                    if (newSpots.isEmpty()) {
-                        emptyView.setVisibility(View.VISIBLE);
-                        parkingList.setVisibility(View.GONE);
-                    } else {
-                        emptyView.setVisibility(View.GONE);
-                        parkingList.setVisibility(View.VISIBLE);
-                    }
-
-                    adapter.updateData(parkingSpots, spotIds);
-                    progressBar.setVisibility(View.GONE);
-
-                    // Mark data as initialized
-                    isDataInitialized = true;
-                })
-                .addOnFailureListener(e -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(AddLocationActivity.this, "Failed to load parking spots: " +
-                            e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+            @Override
+            public void onFailure(Exception e) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(AddLocationActivity.this, "Failed to load parking spots: " +
+                        e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     // Optimization 5: Refresh parking spots in background
     private void refreshParkingSpotsInBackground() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) return;
+        dbHandler.getUserParkingSpots(true, new DatabaseHandler.ParkingSpotsCallback() {
+            @Override
+            public void onSuccess(List<ParkingSpot> newSpots, String[] newSpotIds) {
+                // Update cache
+                parkingSpotCache = new ArrayList<>(newSpots);
+                spotIdsCache = newSpotIds.clone();
 
-        db.collection("parking_spaces")
-                .whereEqualTo("userId", currentUser.getUid())
-                .get(Source.SERVER)
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<ParkingSpot> newSpots = new ArrayList<>();
-                    String[] newSpotIds = new String[queryDocumentSnapshots.size()];
+                // If data has changed, update UI
+                if (spotIds.length != newSpotIds.length || !parkingSpots.equals(newSpots)) {
+                    runOnUiThread(() -> {
+                        parkingSpots.clear();
+                        parkingSpots.addAll(newSpots);
+                        spotIds = newSpotIds;
+                        adapter.updateData(parkingSpots, spotIds);
+                    });
+                }
+            }
 
-                    int i = 0;
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
-
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
-
-                        newSpots.add(new ParkingSpot(name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay));
-
-                        newSpotIds[i++] = doc.getId();
-                    }
-
-                    // Update cache
-                    parkingSpotCache = new ArrayList<>(newSpots);
-                    spotIdsCache = newSpotIds.clone();
-
-                    // If data has changed, update UI
-                    if (spotIds.length != newSpotIds.length || !parkingSpots.equals(newSpots)) {
-                        runOnUiThread(() -> {
-                            parkingSpots.clear();
-                            parkingSpots.addAll(newSpots);
-                            spotIds = newSpotIds;
-                            adapter.updateData(parkingSpots, spotIds);
-                        });
-                    }
-                });
+            @Override
+            public void onFailure(Exception e) {
+                // Silent failure in background refresh
+            }
+        });
     }
 
     private void editParkingSpot(int position, String spotId) {
@@ -515,17 +471,20 @@ public class AddLocationActivity extends AppCompatActivity {
             return;
         }
 
-        db.collection("parking_spaces").document(spotId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    progressBar.setVisibility(View.GONE);
-                    setupEditDialog(spotId, documentSnapshot);
-                })
-                .addOnFailureListener(e -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "Error loading parking spot data: " +
-                            e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        dbHandler.getParkingSpotById(spotId, new DatabaseHandler.ParkingSpotCallback() {
+            @Override
+            public void onSuccess(DocumentSnapshot documentSnapshot) {
+                progressBar.setVisibility(View.GONE);
+                setupEditDialog(spotId, documentSnapshot);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(AddLocationActivity.this, "Error loading parking spot data: " +
+                        e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupEditDialog(String spotId, int position) {
@@ -638,28 +597,32 @@ public class AddLocationActivity extends AppCompatActivity {
                 });
             }
 
-            // Update parking spot in Firestore
-            db.collection("parking_spaces").document(spotId)
-                    .update(
-                            "name", etName.getText().toString(),
-                            "location", selectedLocationAddress,
-                            "rate3h", Double.parseDouble(etRate3h.getText().toString()),
-                            "rate6h", Double.parseDouble(etRate6h.getText().toString()),
-                            "rate12h", Double.parseDouble(etRate12h.getText().toString()),
-                            "rate24h", Double.parseDouble(etRate24h.getText().toString())
-                    )
-                    .addOnSuccessListener(aVoid -> {
-                        progressBar.setVisibility(View.GONE);
-                        Toast.makeText(AddLocationActivity.this, "Parking spot updated",
-                                Toast.LENGTH_SHORT).show();
-                        loadUserParkingSpots(true);  // Force refresh the list
-                        editDialog.dismiss();
-                    })
-                    .addOnFailureListener(e -> {
-                        progressBar.setVisibility(View.GONE);
-                        Toast.makeText(AddLocationActivity.this,
-                                "Error updating parking spot: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show();
+            // Update parking spot using DatabaseHandler
+            dbHandler.updateParkingSpot(
+                    spotId,
+                    etName.getText().toString(),
+                    selectedLocationAddress,
+                    Double.parseDouble(etRate3h.getText().toString()),
+                    Double.parseDouble(etRate6h.getText().toString()),
+                    Double.parseDouble(etRate12h.getText().toString()),
+                    Double.parseDouble(etRate24h.getText().toString()),
+                    new DatabaseHandler.BooleanCallback() {
+                        @Override
+                        public void onResult(boolean result) {
+                            progressBar.setVisibility(View.GONE);
+                            Toast.makeText(AddLocationActivity.this, "Parking spot updated",
+                                    Toast.LENGTH_SHORT).show();
+                            loadUserParkingSpots(true);  // Force refresh the list
+                            editDialog.dismiss();
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            progressBar.setVisibility(View.GONE);
+                            Toast.makeText(AddLocationActivity.this,
+                                    "Error updating parking spot: " + e.getMessage(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
                     });
         });
 
@@ -680,39 +643,42 @@ public class AddLocationActivity extends AppCompatActivity {
     private void deleteParkingSpot(int position, String spotId) {
         progressBar.setVisibility(View.VISIBLE);
 
-        db.collection("parking_spaces").document(spotId)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "Parking spot deleted",
-                            Toast.LENGTH_SHORT).show();
+        dbHandler.deleteParkingSpot(spotId, new DatabaseHandler.BooleanCallback() {
+            @Override
+            public void onResult(boolean result) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(AddLocationActivity.this, "Parking spot deleted",
+                        Toast.LENGTH_SHORT).show();
 
-                    // Optimization 3: Update lists more efficiently
-                    if (position < parkingSpots.size()) {
-                        parkingSpots.remove(position);
+                // Optimization 3: Update lists more efficiently
+                if (position < parkingSpots.size()) {
+                    parkingSpots.remove(position);
+                }
+
+                // Create new spotIds array without the deleted item
+                String[] newSpotIds = new String[spotIds.length - 1];
+                int index = 0;
+                for (int i = 0; i < spotIds.length; i++) {
+                    if (i != position) {
+                        newSpotIds[index++] = spotIds[i];
                     }
+                }
+                spotIds = newSpotIds;
 
-                    // Create new spotIds array without the deleted item
-                    String[] newSpotIds = new String[spotIds.length - 1];
-                    int index = 0;
-                    for (int i = 0; i < spotIds.length; i++) {
-                        if (i != position) {
-                            newSpotIds[index++] = spotIds[i];
-                        }
-                    }
-                    spotIds = newSpotIds;
+                // Update cache
+                parkingSpotCache = new ArrayList<>(parkingSpots);
+                spotIdsCache = spotIds.clone();
 
-                    // Update cache
-                    parkingSpotCache = new ArrayList<>(parkingSpots);
-                    spotIdsCache = spotIds.clone();
+                adapter.updateData(parkingSpots, spotIds);
+            }
 
-                    adapter.updateData(parkingSpots, spotIds);
-                })
-                .addOnFailureListener(e -> {
-                    progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "Error deleting parking spot: " +
-                            e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+            @Override
+            public void onError(Exception e) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(AddLocationActivity.this, "Error deleting parking spot: " +
+                        e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override

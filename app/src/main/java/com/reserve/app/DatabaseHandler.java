@@ -11,11 +11,15 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
+import com.google.firebase.firestore.Source;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DatabaseHandler {
@@ -28,6 +32,31 @@ public class DatabaseHandler {
     public interface BooleanCallback {
         void onResult(boolean result);
         void onError(Exception e);
+    }
+
+    public interface DocumentCallback {
+        void onSuccess(DocumentSnapshot document);
+        void onFailure(Exception e);
+    }
+
+    public interface AllParkingSpotsCallback {
+        void onSuccess(List<ParkingSpot> spots);
+        void onFailure(Exception e);
+    }
+
+    public interface ParkingSpotsCallback {
+        void onSuccess(List<ParkingSpot> spots, String[] spotIds);
+        void onFailure(Exception e);
+    }
+
+    public interface ParkingSpotCallback {
+        void onSuccess(DocumentSnapshot document);
+        void onFailure(Exception e);
+    }
+
+    public interface ParkingSpotWithIDCallback {
+        void onSuccess(List<DocumentSnapshot> documents);
+        void onFailure(Exception e);
     }
 
     // Singleton instance
@@ -88,6 +117,31 @@ public class DatabaseHandler {
                         callback.onFailure(task.getException());
                     }
                 });
+    }
+
+    public void getUserData(String userId, DocumentCallback callback) {
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .get()
+                .addOnSuccessListener(callback::onSuccess)
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void updateUserLocation(String userId, double latitude, double longitude, BooleanCallback callback) {
+        if (userId == null) {
+            callback.onError(new IllegalArgumentException("User ID cannot be null"));
+            return;
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("latitude", latitude);
+        updates.put("longitude", longitude);
+
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .update(updates)
+                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                .addOnFailureListener(callback::onError);
     }
 
     // Email uniqueness check
@@ -176,6 +230,126 @@ public class DatabaseHandler {
                 .add(parkingSpace)
                 .addOnSuccessListener(doc -> callback.onResult(true))
                 .addOnFailureListener(e -> callback.onError(e));
+    }
+
+
+    public void getAllParkingSpots(boolean forceRefresh, AllParkingSpotsCallback callback) {
+        // Source parameter determines if data comes from cache first
+        Source source = forceRefresh ? Source.SERVER : Source.DEFAULT;
+
+        db.collection(COLLECTION_PARKING_SPACES)
+                .get(source)
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<ParkingSpot> spots = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        String name = doc.getString("name");
+                        String location = doc.getString("location");
+                        Double rate3h = doc.getDouble("rate3h");
+                        Double rate6h = doc.getDouble("rate6h");
+                        Double rate12h = doc.getDouble("rate12h");
+                        Double rate24h = doc.getDouble("rate24h");
+
+                        String price3Hours = "₱" + String.format("%.2f", rate3h);
+                        String price6Hours = "₱" + String.format("%.2f", rate6h);
+                        String price12Hours = "₱" + String.format("%.2f", rate12h);
+                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                        spots.add(new ParkingSpot(name, location,
+                                R.drawable.ic_map_placeholder, price3Hours,
+                                price6Hours, price12Hours, pricePerDay));
+                    }
+
+                    callback.onSuccess(spots);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getAllParkingSpotsWithIDs(boolean forceRefresh, ParkingSpotWithIDCallback callback) {
+        Source source = forceRefresh ? Source.SERVER : Source.DEFAULT;
+
+        db.collection(COLLECTION_PARKING_SPACES)
+                .get(source)
+                .addOnSuccessListener(queryDocumentSnapshots ->
+                        callback.onSuccess(queryDocumentSnapshots.getDocuments()))
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getUserParkingSpots(boolean forceRefresh, ParkingSpotsCallback callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onFailure(new IllegalStateException("User not logged in"));
+            return;
+        }
+
+        // Source parameter determines if data comes from cache first
+        Source source = forceRefresh ? Source.SERVER : Source.DEFAULT;
+
+        db.collection(COLLECTION_PARKING_SPACES)
+                .whereEqualTo("userId", currentUser.getUid())
+                .get(source)
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<ParkingSpot> spots = new ArrayList<>();
+                    String[] spotIds = new String[queryDocumentSnapshots.size()];
+
+                    int i = 0;
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        String name = doc.getString("name");
+                        String location = doc.getString("location");
+                        Double rate3h = doc.getDouble("rate3h");
+                        Double rate6h = doc.getDouble("rate6h");
+                        Double rate12h = doc.getDouble("rate12h");
+                        Double rate24h = doc.getDouble("rate24h");
+
+                        String price3Hours = "₱" + String.format("%.2f", rate3h);
+                        String price6Hours = "₱" + String.format("%.2f", rate6h);
+                        String price12Hours = "₱" + String.format("%.2f", rate12h);
+                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                        spots.add(new ParkingSpot(name, location,
+                                R.drawable.ic_map_placeholder, price3Hours,
+                                price6Hours, price12Hours, pricePerDay));
+
+                        spotIds[i++] = doc.getId();
+                    }
+
+                    callback.onSuccess(spots, spotIds);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getParkingSpotById(String spotId, ParkingSpotCallback callback) {
+        db.collection(COLLECTION_PARKING_SPACES)
+                .document(spotId)
+                .get()
+                .addOnSuccessListener(callback::onSuccess)
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void updateParkingSpot(String spotId, String name, String location,
+                                  double rate3h, double rate6h,
+                                  double rate12h, double rate24h, BooleanCallback callback) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("name", name);
+        updates.put("location", location);
+        updates.put("rate3h", rate3h);
+        updates.put("rate6h", rate6h);
+        updates.put("rate12h", rate12h);
+        updates.put("rate24h", rate24h);
+
+        db.collection(COLLECTION_PARKING_SPACES)
+                .document(spotId)
+                .update(updates)
+                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                .addOnFailureListener(callback::onError);
+    }
+
+    public void deleteParkingSpot(String spotId, BooleanCallback callback) {
+        db.collection(COLLECTION_PARKING_SPACES)
+                .document(spotId)
+                .delete()
+                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                .addOnFailureListener(callback::onError);
     }
 
     // Rental creation
@@ -281,6 +455,17 @@ public class DatabaseHandler {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         callback.onSuccess(mAuth.getCurrentUser());
+                    } else {
+                        callback.onFailure(task.getException());
+                    }
+                });
+    }
+
+    public void signInWithGoogle(AuthCredential credential, AuthCallback callback) {
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
+                        callback.onSuccess(task.getResult().getUser());
                     } else {
                         callback.onFailure(task.getException());
                     }

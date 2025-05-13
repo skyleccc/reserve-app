@@ -308,36 +308,24 @@ public class CreateAccountActivity extends AppCompatActivity {
                         errorTextView.setVisibility(View.VISIBLE);
                     });
                     // Sign out from the current Google sign-in attempt
-                    FirebaseAuth.getInstance().signOut();
+                    dbHandler.signOut(); // Use DatabaseHandler instead of direct Firebase call
                     return;
                 }
 
-                // If email is unique, authenticate with Firebase
-                FirebaseAuth.getInstance().signInWithCredential(credential)
-                        .addOnCompleteListener(CreateAccountActivity.this, task -> {
-                            createAccountGoogleButton.setEnabled(true);
-                            createAccountGoogleButton.setText("\uFFFC Continue with Google");
+                // Continue with Google sign-in process
+                // Get user profile data from Google account
+                String firstName = account.getGivenName() != null ? account.getGivenName() : "";
+                String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
+                String email = account.getEmail();
+                String idToken = account.getIdToken();
 
-                            if (task.isSuccessful() && task.getResult() != null && task.getResult().getUser() != null) {
-                                // Get user data from Google account
-                                String firstName = account.getGivenName() != null ? account.getGivenName() : "";
-                                String lastName = account.getFamilyName() != null ? account.getFamilyName() : "";
-                                String idToken = account.getIdToken();
-
-                                // Navigate to completion screen
-                                Intent intent = new Intent(CreateAccountActivity.this, CompleteGoogleSignupActivity.class);
-                                intent.putExtra("firstName", firstName);
-                                intent.putExtra("lastName", lastName);
-                                intent.putExtra("email", email);
-                                intent.putExtra("idToken", idToken);
-                                startActivity(intent);
-                            } else {
-                                // Handle failure
-                                String errorMessage = task.getException() != null ? task.getException().getMessage() : "Authentication failed";
-                                errorTextView.setText("Authentication failed: " + errorMessage);
-                                errorTextView.setVisibility(View.VISIBLE);
-                            }
-                        });
+                // Start CompleteGoogleSignupActivity for user to provide phone
+                Intent intent = new Intent(CreateAccountActivity.this, CompleteGoogleSignupActivity.class);
+                intent.putExtra("firstName", firstName);
+                intent.putExtra("lastName", lastName);
+                intent.putExtra("email", email);
+                intent.putExtra("idToken", idToken);
+                startActivity(intent);
             }
 
             @Override
@@ -346,7 +334,7 @@ public class CreateAccountActivity extends AppCompatActivity {
                     errorTextView.setText("Error checking email: " + e.getMessage());
                     errorTextView.setVisibility(View.VISIBLE);
                     createAccountGoogleButton.setEnabled(true);
-                    createAccountGoogleButton.setText("\uFFFC Continue with Google");
+                    createAccountGoogleButton.setText("Sign up with Google");
                 });
             }
         });

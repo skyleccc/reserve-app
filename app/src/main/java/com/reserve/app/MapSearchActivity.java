@@ -42,6 +42,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class MapSearchActivity extends AppCompatActivity implements OnMapReadyCallback {
+    // Database
+    private DatabaseHandler dbHandler;
+
     private GoogleMap mMap;
     private EditText searchEditText;
     private Button searchHereButton;
@@ -83,6 +86,9 @@ public class MapSearchActivity extends AppCompatActivity implements OnMapReadyCa
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Initialize DatabaseHandler
+        dbHandler = DatabaseHandler.getInstance(this);
 
         // Initialize views
         initializeViews();
@@ -235,37 +241,43 @@ public class MapSearchActivity extends AppCompatActivity implements OnMapReadyCa
         // Show loading indicator
         Toast.makeText(this, "Searching for parking spots...", Toast.LENGTH_SHORT).show();
 
-        FirebaseFirestore.getInstance().collection("parking_spaces")
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        String spotId = doc.getId();
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
+        dbHandler.getAllParkingSpotsWithIDs(true, new DatabaseHandler.ParkingSpotWithIDCallback() {
+            @Override
+            public void onSuccess(List<DocumentSnapshot> documents) {
+                for (DocumentSnapshot doc : documents) {
+                    String spotId = doc.getId();
+                    String name = doc.getString("name");
+                    String location = doc.getString("location");
+                    Double rate3h = doc.getDouble("rate3h");
+                    Double rate6h = doc.getDouble("rate6h");
+                    Double rate12h = doc.getDouble("rate12h");
+                    Double rate24h = doc.getDouble("rate24h");
 
-                        // Format prices
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+                    // Format prices
+                    String price3Hours = "₱" + String.format("%.2f", rate3h);
+                    String price6Hours = "₱" + String.format("%.2f", rate6h);
+                    String price12Hours = "₱" + String.format("%.2f", rate12h);
+                    String pricePerDay = "₱" + String.format("%.2f", rate24h);
 
-                        // Create parking spot object
-                        ParkingSpot spot = new ParkingSpot(name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay);
+                    // Create parking spot object
+                    ParkingSpot spot = new ParkingSpot(name, location,
+                            R.drawable.ic_map_placeholder, price3Hours,
+                            price6Hours, price12Hours, pricePerDay);
 
-                        // Geocode the parking spot location
-                        geocodeAndAddMarker(spotId, spot, latitude, longitude);
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to load parking spots: " + e.getMessage(),
+                    // Geocode the parking spot location
+                    geocodeAndAddMarker(spotId, spot, latitude, longitude);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MapSearchActivity.this,
+                            "Failed to load parking spots: " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                 });
+            }
+        });
     }
 
     private void geocodeAndAddMarker(String spotId, ParkingSpot spot, double searchLat, double searchLng) {

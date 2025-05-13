@@ -47,6 +47,9 @@ public class HomepageActivity extends AppCompatActivity {
     private ParkingSpotAdapter adapter;
     TextView tvParkingTitle;
     private boolean isDataInitialized = false;
+
+    // Database
+    private DatabaseHandler dbHandler;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
     private static final double DEFAULT_MAX_DISTANCE_KM = 5.0; // 5 kilometers default
 
@@ -71,6 +74,8 @@ public class HomepageActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        dbHandler = DatabaseHandler.getInstance(this);
 
         // Parking spots list
         tvParkingTitle = findViewById(R.id.tv_parking_spots_title);
@@ -187,13 +192,21 @@ public class HomepageActivity extends AppCompatActivity {
                 // Save location to session
                 sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
 
-                // Save to Firebase if user is logged in
+                // Save to Firebase if user is logged in using DatabaseHandler
                 String userId = sessionManager.getUserId();
                 if (userId != null) {
-                    FirebaseFirestore.getInstance().collection("users")
-                            .document(userId)
-                            .update("latitude", location.getLatitude(),
-                                    "longitude", location.getLongitude());
+                    dbHandler.updateUserLocation(userId, location.getLatitude(), location.getLongitude(),
+                            new DatabaseHandler.BooleanCallback() {
+                                @Override
+                                public void onResult(boolean result) {
+                                    // Success - no action needed
+                                }
+
+                                @Override
+                                public void onError(Exception e) {
+                                    // Optional: handle error
+                                }
+                            });
                 }
 
                 // Load nearby parking spots after getting location
@@ -239,89 +252,48 @@ public class HomepageActivity extends AppCompatActivity {
             return;
         }
 
-        // Query all parking spaces from Firestore with caching
-        FirebaseFirestore.getInstance().collection("parking_spaces")
-                .get(Source.SERVER)  // Try cache first, then network
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<ParkingSpot> newSpots = new ArrayList<>();
+        // Use DatabaseHandler to get all parking spots
+        dbHandler.getAllParkingSpots(true, new DatabaseHandler.AllParkingSpotsCallback() {
+            @Override
+            public void onSuccess(List<ParkingSpot> newSpots) {
+                // Update cache
+                parkingSpotCache = new ArrayList<>(newSpots);
 
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        // Extract data from document
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
+                // Process spots
+                processParkingSpots(newSpots, userLat, userLng, showLoadingIndicator);
 
-                        // Format prices
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+                // Hide loading indicator on success
+                if (showLoadingIndicator) {
+                    progressBar.setVisibility(View.GONE);
+                }
+            }
 
-                        // Create parking spot object
-                        ParkingSpot spot = new ParkingSpot(name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay);
-
-                        newSpots.add(spot);
-                    }
-
-                    // Update cache
-                    parkingSpotCache = new ArrayList<>(newSpots);
-
-                    // Process spots
-                    processParkingSpots(newSpots, userLat, userLng, showLoadingIndicator);
-
-                    // Hide loading indicator on success
-                    if (showLoadingIndicator) {
-                        progressBar.setVisibility(View.GONE);
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    // Hide loading indicator on failure
-                    if (showLoadingIndicator) {
-                        progressBar.setVisibility(View.GONE);
-                        Toast.makeText(this, "Failed to load parking spots: " +
-                                e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                });
+            @Override
+            public void onFailure(Exception e) {
+                // Hide loading indicator on failure
+                if (showLoadingIndicator) {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(HomepageActivity.this, "Failed to load parking spots: " +
+                            e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     // Helper method to refresh cache in background
     private void refreshParkingSpotsCache(boolean showLoading) {
-        FirebaseFirestore.getInstance().collection("parking_spaces")
-                .get(Source.SERVER)  // Force server refresh
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<ParkingSpot> newSpots = new ArrayList<>();
+        dbHandler.getAllParkingSpots(true, new DatabaseHandler.AllParkingSpotsCallback() {
+            @Override
+            public void onSuccess(List<ParkingSpot> newSpots) {
+                // Update cache for next time
+                parkingSpotCache = new ArrayList<>(newSpots);
+            }
 
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        // Extract data from document
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
-
-                        // Format prices
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
-
-                        // Create parking spot object
-                        ParkingSpot spot = new ParkingSpot(name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay);
-
-                        newSpots.add(spot);
-                    }
-
-                    // Update cache for next time
-                    parkingSpotCache = new ArrayList<>(newSpots);
-                });
+            @Override
+            public void onFailure(Exception e) {
+                // Silent failure in background refresh
+            }
+        });
     }
 
     private void processParkingSpots(List<ParkingSpot> spots, double userLat, double userLng,
