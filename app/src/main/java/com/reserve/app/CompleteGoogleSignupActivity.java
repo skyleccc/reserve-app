@@ -1,8 +1,6 @@
 package com.reserve.app;
 
 import android.content.Intent;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
@@ -15,15 +13,17 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 public class CompleteGoogleSignupActivity extends AppCompatActivity {
     private TextView completeAccountButton;
     private TextView header1TextView, header2TextView, errorTextView;
-    private TextView firstNameEditText, lastNameEditText, emailEditText, phoneEditText;
+    private TextInputEditText firstNameEditText, lastNameEditText, emailEditText, phoneEditText;
+    private TextInputLayout firstNameLayout, lastNameLayout, emailLayout, phoneLayout;
 
     private DatabaseHandler dbHandler;
     private String idToken;
@@ -43,10 +43,19 @@ public class CompleteGoogleSignupActivity extends AppCompatActivity {
         completeAccountButton = findViewById(R.id.buttonCompleteAccount);
         header1TextView = findViewById(R.id.headerTextView);
         header2TextView = findViewById(R.id.header2TextView);
+
+        // Get TextInputEditText references
         firstNameEditText = findViewById(R.id.editTextFirstName);
         lastNameEditText = findViewById(R.id.editTextLastName);
         emailEditText = findViewById(R.id.editTextTextEmailAddress);
         phoneEditText = findViewById(R.id.editTextPhone);
+
+        // Get TextInputLayout references
+        firstNameLayout = findViewById(R.id.firstNameInputLayout);
+        lastNameLayout = findViewById(R.id.lastNameInputLayout);
+        emailLayout = findViewById(R.id.emailInputLayout);
+        phoneLayout = findViewById(R.id.phoneInputLayout);
+
         errorTextView = findViewById(R.id.errorMessageTextView);
 
         // DB instance
@@ -79,14 +88,20 @@ public class CompleteGoogleSignupActivity extends AppCompatActivity {
         String email = emailEditText.getText().toString();
         String phone = phoneEditText.getText().toString();
 
+        // Reset all errors
+        firstNameLayout.setErrorEnabled(false);
+        lastNameLayout.setErrorEnabled(false);
+        emailLayout.setErrorEnabled(false);
+        phoneLayout.setErrorEnabled(false);
+
         if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || phone.isEmpty()) {
             // Lacking Credentials
             errorTextView.setText("Please fill in all fields.");
             errorTextView.setVisibility(View.VISIBLE);
 
-            if (firstName.isEmpty()) { firstNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); firstNameEditText.setError("First name is required"); }
-            if (lastName.isEmpty()) { lastNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); lastNameEditText.setError("Last name is required"); }
-            if (phone.isEmpty()) { phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); phoneEditText.setError("Phone number is required"); }
+            if (firstName.isEmpty()) { firstNameLayout.setError("First name is required"); }
+            if (lastName.isEmpty()) { lastNameLayout.setError("Last name is required"); }
+            if (phone.isEmpty()) { phoneLayout.setError("Phone number is required"); }
 
             return;
         }
@@ -95,7 +110,7 @@ public class CompleteGoogleSignupActivity extends AppCompatActivity {
             // Invalid phone number format
             errorTextView.setText("Invalid phone number format.");
             errorTextView.setVisibility(View.VISIBLE);
-            phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            phoneLayout.setError("Invalid phone number format");
             return;
         }
 
@@ -111,7 +126,7 @@ public class CompleteGoogleSignupActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         errorTextView.setText("Phone number already exists.");
                         errorTextView.setVisibility(View.VISIBLE);
-                        phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                        phoneLayout.setError("Phone number already exists");
                         completeAccountButton.setEnabled(true);
                         completeAccountButton.setText("Complete Signup");
                     });
@@ -170,10 +185,10 @@ public class CompleteGoogleSignupActivity extends AppCompatActivity {
     }
 
     private void resetPrevious() {
-        firstNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        lastNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+        if (firstNameLayout != null) firstNameLayout.setErrorEnabled(false);
+        if (lastNameLayout != null) lastNameLayout.setErrorEnabled(false);
+        if (emailLayout != null) emailLayout.setErrorEnabled(false);
+        if (phoneLayout != null) phoneLayout.setErrorEnabled(false);
         errorTextView.setVisibility(View.GONE);
     }
 

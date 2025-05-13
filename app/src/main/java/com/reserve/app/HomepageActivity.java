@@ -253,9 +253,37 @@ public class HomepageActivity extends AppCompatActivity {
         }
 
         // Use DatabaseHandler to get all parking spots
-        dbHandler.getAllParkingSpots(true, new DatabaseHandler.AllParkingSpotsCallback() {
+        dbHandler.getAllParkingSpotsWithIDs(true, new DatabaseHandler.ParkingSpotWithIDCallback() {
             @Override
-            public void onSuccess(List<ParkingSpot> newSpots) {
+            public void onSuccess(List<DocumentSnapshot> documents) {
+                List<ParkingSpot> newSpots = new ArrayList<>();
+
+                for (DocumentSnapshot doc : documents) {
+                    String id = doc.getId();
+                    String name = doc.getString("name");
+                    String location = doc.getString("location");
+                    Double rate3h = doc.getDouble("rate3h");
+                    Double rate6h = doc.getDouble("rate6h");
+                    Double rate12h = doc.getDouble("rate12h");
+                    Double rate24h = doc.getDouble("rate24h");
+
+                    String price3Hours = "₱" + String.format("%.2f", rate3h);
+                    String price6Hours = "₱" + String.format("%.2f", rate6h);
+                    String price12Hours = "₱" + String.format("%.2f", rate12h);
+                    String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                    newSpots.add(new ParkingSpot(
+                            id,
+                            name,
+                            location,
+                            R.drawable.ic_map_placeholder,
+                            price3Hours,
+                            price6Hours,
+                            price12Hours,
+                            pricePerDay
+                    ));
+                }
+
                 // Update cache
                 parkingSpotCache = new ArrayList<>(newSpots);
 
@@ -282,9 +310,37 @@ public class HomepageActivity extends AppCompatActivity {
 
     // Helper method to refresh cache in background
     private void refreshParkingSpotsCache(boolean showLoading) {
-        dbHandler.getAllParkingSpots(true, new DatabaseHandler.AllParkingSpotsCallback() {
+        dbHandler.getAllParkingSpotsWithIDs(true, new DatabaseHandler.ParkingSpotWithIDCallback() {
             @Override
-            public void onSuccess(List<ParkingSpot> newSpots) {
+            public void onSuccess(List<DocumentSnapshot> documents) {
+                List<ParkingSpot> newSpots = new ArrayList<>();
+
+                for (DocumentSnapshot doc : documents) {
+                    String id = doc.getId();
+                    String name = doc.getString("name");
+                    String location = doc.getString("location");
+                    Double rate3h = doc.getDouble("rate3h");
+                    Double rate6h = doc.getDouble("rate6h");
+                    Double rate12h = doc.getDouble("rate12h");
+                    Double rate24h = doc.getDouble("rate24h");
+
+                    String price3Hours = "₱" + String.format("%.2f", rate3h);
+                    String price6Hours = "₱" + String.format("%.2f", rate6h);
+                    String price12Hours = "₱" + String.format("%.2f", rate12h);
+                    String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                    newSpots.add(new ParkingSpot(
+                            id,
+                            name,
+                            location,
+                            R.drawable.ic_map_placeholder,
+                            price3Hours,
+                            price6Hours,
+                            price12Hours,
+                            pricePerDay
+                    ));
+                }
+
                 // Update cache for next time
                 parkingSpotCache = new ArrayList<>(newSpots);
             }
@@ -295,7 +351,6 @@ public class HomepageActivity extends AppCompatActivity {
             }
         });
     }
-
     private void processParkingSpots(List<ParkingSpot> spots, double userLat, double userLng,
                                      boolean showLoadingIndicator) {
         // Reset counters

@@ -234,7 +234,7 @@ public class MapSearchActivity extends AppCompatActivity implements OnMapReadyCa
     }
 
     private void searchNearbyParkingSpots(double latitude, double longitude) {
-        // Clear existing markers except the selected one
+        // Clear existing markers
         clearParkingMarkers();
         markerInfoMap.clear();
 
@@ -260,7 +260,7 @@ public class MapSearchActivity extends AppCompatActivity implements OnMapReadyCa
                     String pricePerDay = "₱" + String.format("%.2f", rate24h);
 
                     // Create parking spot object
-                    ParkingSpot spot = new ParkingSpot(name, location,
+                    ParkingSpot spot = new ParkingSpot(spotId, name, location,
                             R.drawable.ic_map_placeholder, price3Hours,
                             price6Hours, price12Hours, pricePerDay);
 

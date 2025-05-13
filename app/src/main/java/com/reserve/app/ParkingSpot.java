@@ -1,6 +1,7 @@
 package com.reserve.app;
 
 public class ParkingSpot {
+    String id;
     String title;
     String address;
     int imageResId;
@@ -9,8 +10,9 @@ public class ParkingSpot {
     String price12Hours;
     String pricePerDay;
 
-    public ParkingSpot(String title, String address, int imageResId,
+    public ParkingSpot(String id, String title, String address, int imageResId,
                        String price3Hours, String price6Hours, String price12Hours, String pricePerDay) {
+        this.id = id;
         this.title = title;
         this.address = address;
         this.imageResId = imageResId;

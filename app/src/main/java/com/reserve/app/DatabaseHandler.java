@@ -243,6 +243,7 @@ public class DatabaseHandler {
                     List<ParkingSpot> spots = new ArrayList<>();
 
                     for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        String id = doc.getId();  // Get the document ID
                         String name = doc.getString("name");
                         String location = doc.getString("location");
                         Double rate3h = doc.getDouble("rate3h");
@@ -255,7 +256,7 @@ public class DatabaseHandler {
                         String price12Hours = "₱" + String.format("%.2f", rate12h);
                         String pricePerDay = "₱" + String.format("%.2f", rate24h);
 
-                        spots.add(new ParkingSpot(name, location,
+                        spots.add(new ParkingSpot(id, name, location,
                                 R.drawable.ic_map_placeholder, price3Hours,
                                 price6Hours, price12Hours, pricePerDay));
                     }
@@ -306,7 +307,7 @@ public class DatabaseHandler {
                         String price12Hours = "₱" + String.format("%.2f", rate12h);
                         String pricePerDay = "₱" + String.format("%.2f", rate24h);
 
-                        spots.add(new ParkingSpot(name, location,
+                        spots.add(new ParkingSpot(doc.getId(), name, location,
                                 R.drawable.ic_map_placeholder, price3Hours,
                                 price6Hours, price12Hours, pricePerDay));
 
@@ -355,6 +356,7 @@ public class DatabaseHandler {
     // Rental creation
     public void createRental(String parkingSpaceId, String startTime,
                              String endTime, double totalCost, String status,
+                             String licensePlate, String vehicleDescription,
                              BooleanCallback callback) {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
@@ -369,6 +371,8 @@ public class DatabaseHandler {
         rental.put("endTime", endTime);
         rental.put("totalCost", totalCost);
         rental.put("status", status);
+        rental.put("licensePlate", licensePlate);
+        rental.put("vehicleDescription", vehicleDescription);
         rental.put("createdAt", com.google.firebase.Timestamp.now());
 
         db.collection(COLLECTION_RENTALS)

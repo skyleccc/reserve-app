@@ -1,7 +1,6 @@
 package com.reserve.app;
 
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -17,32 +16,29 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.credentials.CredentialManager;
-import androidx.credentials.GetCredentialRequest;
-import androidx.credentials.GetCredentialResponse;
-import androidx.credentials.exceptions.GetCredentialException;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 public class CreateAccountActivity extends AppCompatActivity {
     private TextView createAccountButton, createAccountGoogleButton, createAccountAppleButton, loginAccountButton;
     private TextView header1TextView, header2TextView, footerTextView, errorTextView;
+    private TextInputEditText firstNameEditText, lastNameEditText, emailEditText,
+            passwordEditText, confirmPasswordEditText, phoneEditText;
+    private TextInputLayout firstNameLayout, lastNameLayout, emailLayout,
+            passwordLayout, confirmPasswordLayout, phoneLayout;
     private TextView[] textTextViews = new TextView[2];
-    private TextView firstNameEditText, lastNameEditText, emailEditText, passwordEditText, confirmPasswordEditText, phoneEditText;
 
     private DatabaseHandler dbHandler;
     private static final int REQ_ONE_TAP = 2;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,12 +59,23 @@ public class CreateAccountActivity extends AppCompatActivity {
         header2TextView = findViewById(R.id.header2TextView);
         textTextViews[0] = findViewById(R.id.textTextView1);
         textTextViews[1] = findViewById(R.id.textTextView2);
+
+        // Get TextInputEditText references
         firstNameEditText = findViewById(R.id.editTextFirstName);
         lastNameEditText = findViewById(R.id.editTextLastName);
         emailEditText = findViewById(R.id.editTextTextEmailAddress);
         passwordEditText = findViewById(R.id.editTextTextPassword);
         confirmPasswordEditText = findViewById(R.id.editTextTextConfirmPassword);
         phoneEditText = findViewById(R.id.editTextPhone);
+
+        // Get TextInputLayout references
+        firstNameLayout = findViewById(R.id.firstNameInputLayout);
+        lastNameLayout = findViewById(R.id.lastNameInputLayout);
+        emailLayout = findViewById(R.id.emailInputLayout);
+        passwordLayout = findViewById(R.id.passwordInputLayout);
+        confirmPasswordLayout = findViewById(R.id.confirmPasswordInputLayout);
+        phoneLayout = findViewById(R.id.phoneInputLayout);
+
         footerTextView = findViewById(R.id.footerTextView);
         loginAccountButton = findViewById(R.id.loginAccountTextView);
         errorTextView = findViewById(R.id.errorMessageTextView);
@@ -107,17 +114,25 @@ public class CreateAccountActivity extends AppCompatActivity {
         String confirmPassword = confirmPasswordEditText.getText().toString();
         String phone = phoneEditText.getText().toString();
 
+        // Reset all errors
+        firstNameLayout.setErrorEnabled(false);
+        lastNameLayout.setErrorEnabled(false);
+        emailLayout.setErrorEnabled(false);
+        passwordLayout.setErrorEnabled(false);
+        confirmPasswordLayout.setErrorEnabled(false);
+        phoneLayout.setErrorEnabled(false);
+
         if(firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || phone.isEmpty()) {
             // Lacking Credentials
             errorTextView.setText("Please fill in all fields.");
             errorTextView.setVisibility(View.VISIBLE);
 
-            if(firstName.isEmpty()) { firstNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); firstNameEditText.setError("First name is required"); }
-            if(lastName.isEmpty()) { lastNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); lastNameEditText.setError("Last name is required");}
-            if(email.isEmpty()) { emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); emailEditText.setError("Email is required"); }
-            if(password.isEmpty()) { passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); passwordEditText.setError("Password is required"); }
-            if(confirmPassword.isEmpty()) { confirmPasswordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); confirmPasswordEditText.setError("Password is required"); }
-            if(phone.isEmpty()) { phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2"))); phoneEditText.setError("Phone number is required"); }
+            if(firstName.isEmpty()) { firstNameLayout.setError("First name is required"); }
+            if(lastName.isEmpty()) { lastNameLayout.setError("Last name is required"); }
+            if(email.isEmpty()) { emailLayout.setError("Email is required"); }
+            if(password.isEmpty()) { passwordLayout.setError("Password is required"); }
+            if(confirmPassword.isEmpty()) { confirmPasswordLayout.setError("Password confirmation is required"); }
+            if(phone.isEmpty()) { phoneLayout.setError("Phone number is required"); }
 
             return;
         }
@@ -126,7 +141,7 @@ public class CreateAccountActivity extends AppCompatActivity {
             // Invalid email format
             errorTextView.setText("Invalid email format.");
             errorTextView.setVisibility(View.VISIBLE);
-            emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            emailLayout.setError("Invalid email format");
             return;
         }
 
@@ -134,7 +149,7 @@ public class CreateAccountActivity extends AppCompatActivity {
             // Invalid phone number format
             errorTextView.setText("Invalid phone number format.");
             errorTextView.setVisibility(View.VISIBLE);
-            phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            phoneLayout.setError("Invalid phone number format");
             return;
         }
 
@@ -142,7 +157,7 @@ public class CreateAccountActivity extends AppCompatActivity {
             // Password too short
             errorTextView.setText("Password must be at least 8 characters.");
             errorTextView.setVisibility(View.VISIBLE);
-            passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            passwordLayout.setError("Password must be at least 8 characters");
             return;
         }
 
@@ -150,8 +165,8 @@ public class CreateAccountActivity extends AppCompatActivity {
             // Not the same password
             errorTextView.setText("Passwords do not match.");
             errorTextView.setVisibility(View.VISIBLE);
-            passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
-            confirmPasswordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+            passwordLayout.setError("Passwords do not match");
+            confirmPasswordLayout.setError("Passwords do not match");
             return;
         }
 
@@ -167,7 +182,7 @@ public class CreateAccountActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         errorTextView.setText("Email already exists.");
                         errorTextView.setVisibility(View.VISIBLE);
-                        emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                        emailLayout.setError("Email already exists");
                         createAccountButton.setEnabled(true);
                         createAccountButton.setText("Continue");
                     });
@@ -182,7 +197,7 @@ public class CreateAccountActivity extends AppCompatActivity {
                             runOnUiThread(() -> {
                                 errorTextView.setText("Phone number already exists.");
                                 errorTextView.setVisibility(View.VISIBLE);
-                                phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
+                                phoneLayout.setError("Phone number already exists");
                                 createAccountButton.setEnabled(true);
                                 createAccountButton.setText("Continue");
                             });
@@ -206,11 +221,7 @@ public class CreateAccountActivity extends AppCompatActivity {
                                         );
 
                                         runOnUiThread(() -> {
-                                            Toast.makeText(CreateAccountActivity.this,
-                                                    "Account created successfully!",
-                                                    Toast.LENGTH_SHORT).show();
-
-                                            // Navigate to the next screen
+                                            Toast.makeText(CreateAccountActivity.this, "Account created successfully!", Toast.LENGTH_SHORT).show();
                                             Intent intent = new Intent(CreateAccountActivity.this, MainActivity.class);
                                             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                                             startActivity(intent);
@@ -340,18 +351,18 @@ public class CreateAccountActivity extends AppCompatActivity {
         });
     }
 
-    private void resetPrevious(){
-        // Reset the background tint of all EditText fields
-        firstNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        lastNameEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        confirmPasswordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
-        phoneEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#EBEBEB")));
+    private void resetPrevious() {
+        // Reset all input layouts
+        if (firstNameLayout != null) firstNameLayout.setErrorEnabled(false);
+        if (lastNameLayout != null) lastNameLayout.setErrorEnabled(false);
+        if (emailLayout != null) emailLayout.setErrorEnabled(false);
+        if (passwordLayout != null) passwordLayout.setErrorEnabled(false);
+        if (confirmPasswordLayout != null) confirmPasswordLayout.setErrorEnabled(false);
+        if (phoneLayout != null) phoneLayout.setErrorEnabled(false);
         errorTextView.setVisibility(View.GONE);
     }
 
-    private void initializeUI(){
+    private void initializeUI() {
         // fonts
         Typeface lexendExaSemiFont = Typeface.createFromAsset(getAssets(), "fonts/LexendExa/LexendExa-SemiBold.ttf");
         Typeface interSemiFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-SemiBold.ttf");

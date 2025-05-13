@@ -37,7 +37,8 @@ public class LoginActivity extends AppCompatActivity {
     private TextView loginButton, loginGoogleButton, loginAppleButton, createAccountButton;
     private TextView header1TextView, header2TextView, footerTextView, errorMessageTextView;
     private TextView[] textTextViews = new TextView[2];
-    private EditText emailEditText, passwordEditText;
+    private com.google.android.material.textfield.TextInputEditText emailEditText, passwordEditText;
+    private com.google.android.material.textfield.TextInputLayout emailInputLayout, passwordInputLayout;
     private DatabaseHandler databaseHandler;
     private FirebaseAuth mAuth;
     private FirebaseUser user;
@@ -102,20 +103,6 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // Initialize UI components
-        loginButton = findViewById(R.id.buttonSignIn);
-        loginGoogleButton = findViewById(R.id.buttonGoogle);
-        loginAppleButton = findViewById(R.id.buttonApple);
-        header1TextView = findViewById(R.id.headerTextView);
-        header2TextView = findViewById(R.id.header2TextView);
-        textTextViews[0] = findViewById(R.id.textTextView1);
-        textTextViews[1] = findViewById(R.id.textTextView2);
-        emailEditText = findViewById(R.id.editTextTextEmailAddress);
-        passwordEditText = findViewById(R.id.editTextTextPassword);
-        createAccountButton = findViewById(R.id.createAccountTextView);
-        footerTextView = findViewById(R.id.footerTextView);
-        errorMessageTextView = findViewById(R.id.errorMessageTextView);
-
         initializeUI();
 
         loginButton.setOnClickListener(v -> { loginUserEmail(); });
@@ -139,14 +126,18 @@ public class LoginActivity extends AppCompatActivity {
             errorMessageTextView.setVisibility(View.VISIBLE);
 
             if (email.isEmpty()) {
-                emailEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
-                emailEditText.setError("Email is required");
-            };
+                emailInputLayout.setError("Email is required");
+                emailInputLayout.setErrorEnabled(true);
+            } else {
+                emailInputLayout.setErrorEnabled(false);
+            }
 
             if (password.isEmpty()) {
-                passwordEditText.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFCDD2")));
-                passwordEditText.setError("Password is required");
-            };
+                passwordInputLayout.setError("Password is required");
+                passwordInputLayout.setErrorEnabled(true);
+            } else {
+                passwordInputLayout.setErrorEnabled(false);
+            }
 
             return;
         }
@@ -320,6 +311,22 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void initializeUI() {
+        // Initialize UI components
+        loginButton = findViewById(R.id.buttonSignIn);
+        loginGoogleButton = findViewById(R.id.buttonGoogle);
+        loginAppleButton = findViewById(R.id.buttonApple);
+        header1TextView = findViewById(R.id.headerTextView);
+        header2TextView = findViewById(R.id.header2TextView);
+        textTextViews[0] = findViewById(R.id.textTextView1);
+        textTextViews[1] = findViewById(R.id.textTextView2);
+        emailEditText = findViewById(R.id.editTextTextEmailAddress);
+        passwordEditText = findViewById(R.id.editTextTextPassword);
+        createAccountButton = findViewById(R.id.createAccountTextView);
+        footerTextView = findViewById(R.id.footerTextView);
+        errorMessageTextView = findViewById(R.id.errorMessageTextView);
+        emailInputLayout = findViewById(R.id.emailInputLayout);
+        passwordInputLayout = findViewById(R.id.passwordInputLayout);
+
         // fonts
         Typeface lexendExaSemiFont = Typeface.createFromAsset(getAssets(), "fonts/LexendExa/LexendExa-SemiBold.ttf");
         Typeface interSemiFont = Typeface.createFromAsset(getAssets(), "fonts/Inter/Inter_18pt-SemiBold.ttf");

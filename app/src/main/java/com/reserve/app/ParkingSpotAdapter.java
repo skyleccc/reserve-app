@@ -41,7 +41,25 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
         holder.perDayRate.setText("1 Day = " + spot.pricePerDay);
 
         holder.bookButton.setOnClickListener(v -> {
-            // TODO: Handle booking
+            // Create intent to navigate to BookingActivity
+            android.content.Intent intent = new android.content.Intent(context, BookingActivity.class);
+
+            // Ensure we're passing the correct ID
+            if (spot.id == null || spot.id.isEmpty()) {
+                return; // Skip if no valid ID
+            }
+
+            // Add all required extras to the intent
+            intent.putExtra("SPOT_ID", spot.id);
+            intent.putExtra("SPOT_NAME", spot.title);
+            intent.putExtra("SPOT_LOCATION", spot.address);
+            intent.putExtra("PRICE_3H", spot.price3Hours);
+            intent.putExtra("PRICE_6H", spot.price6Hours);
+            intent.putExtra("PRICE_12H", spot.price12Hours);
+            intent.putExtra("PRICE_24H", spot.pricePerDay);
+
+            // Start the activity
+            context.startActivity(intent);
         });
     }
 
@@ -69,7 +87,7 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
             hour3Rate = itemView.findViewById(R.id.et_rate_3h);
             hour6Rate = itemView.findViewById(R.id.et_rate_6h);
             hour12Rate = itemView.findViewById(R.id.et_rate_12h);
-            perDayRate  = itemView.findViewById(R.id.per_day);
+            perDayRate = itemView.findViewById(R.id.per_day);
             bookButton = itemView.findViewById(R.id.book_button);
         }
     }
