@@ -19,4 +19,12 @@ public class ParkingSpot {
         this.price12Hours = price12Hours;
         this.pricePerDay = pricePerDay;
     }
+
+    public String getName() {
+        return title;
+    }
+
+    public String getLocation() {
+        return address;
+    }
 }

@@ -67,4 +67,10 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
             bookButton = itemView.findViewById(R.id.book_button);
         }
     }
+
+    public void updateList(List<ParkingSpot> newList){
+        spotList.clear();
+        spotList.addAll(newList);
+        notifyDataSetChanged();
+    }
 }

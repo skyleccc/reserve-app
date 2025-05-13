@@ -22,7 +22,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -36,6 +39,7 @@ public class HomepageActivity extends AppCompatActivity {
     private boolean isDataInitialized = false;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
     private static final double DEFAULT_MAX_DISTANCE_KM = 5.0; // 5 kilometers default
+    EditText searchBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +51,8 @@ public class HomepageActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        searchBar = findViewById(R.id.editSearch);
 
         // Parking spots list
         RecyclerView parkingList = findViewById(R.id.parking_list);
@@ -90,6 +96,31 @@ public class HomepageActivity extends AppCompatActivity {
         navAdd.setOnClickListener(v -> {
             startActivity(new Intent(this, AddLocationActivity.class));
         });
+
+        searchBar.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterParkingSpots(s.toString());
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+    }
+
+    private void filterParkingSpots(String query) {
+        List<ParkingSpot> filteredList = new ArrayList<>();
+        for (ParkingSpot spot : parkingSpots) {
+            if (spot.getName().toLowerCase().contains(query.toLowerCase()) ||
+                    spot.getLocation().toLowerCase().contains(query.toLowerCase())) {
+                filteredList.add(spot);
+            }
+        }
+
+        adapter.updateList(filteredList);
     }
 
     @Override
