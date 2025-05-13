@@ -224,7 +224,7 @@ public class DatabaseHandler {
     }
 
     // User profile update
-    public void updateUserDetails(String firstName, String lastName, String phone,
+    public void updateUserDetails(Map<String, Object> updates,
                                   BooleanCallback callback) {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
@@ -232,24 +232,47 @@ public class DatabaseHandler {
             return;
         }
 
-        // Update display name in Auth
-        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                .setDisplayName(firstName + " " + lastName)
-                .build();
+        // Update the following firebase auth fields only if present
+        if (updates.containsKey("firstName") || updates.containsKey("lastName")) {
+            String firstName = (String) updates.getOrDefault("firstName", "");
+            String lastName = (String) updates.getOrDefault("lastName", "");
+            String displayName = (firstName + " " + lastName).trim();
 
-        currentUser.updateProfile(profileUpdates);
+            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                    .setDisplayName(displayName)
+                    .build();
 
-        // Update Firestore user document
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("firstName", firstName);
-        updates.put("lastName", lastName);
-        updates.put("phone", phone);
+            currentUser.updateProfile(profileUpdates);
+        }
 
+        // Update email if present
+        if (updates.containsKey("email")) {
+            String email = (String) updates.get("email");
+            currentUser.updateEmail(email)
+                    .addOnFailureListener(callback::onError);
+        }
+
+        if (updates.isEmpty()) {
+            callback.onResult(false);
+            return;
+        }
+
+        // Update password if present
+        if (updates.containsKey("password")) {
+            String password = (String) updates.get("password");
+            currentUser.updatePassword(password)
+                    .addOnFailureListener(callback::onError);
+            updates.remove("password"); // avoid writing it to Firestore
+        }
+
+
+        // Update all entries that is present in the map in the firestore
         db.collection(COLLECTION_USERS)
                 .document(currentUser.getUid())
                 .update(updates)
                 .addOnSuccessListener(aVoid -> callback.onResult(true))
-                .addOnFailureListener(e -> callback.onError(e));
+                .addOnFailureListener(callback::onError);
+
     }
 
     // Authentication methods
