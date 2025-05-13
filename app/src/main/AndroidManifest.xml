@@ -2,16 +2,30 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
+        android:name=".ReserveApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_logo"
-        android:label="Reserve"
+        android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_logo_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReserveApp"
         tools:targetApi="31">
+        <activity
+            android:name=".Booking"
+            android:exported="false" />
+        <activity
+            android:name=".MapPickerActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CompleteGoogleSignupActivity"
+            android:exported="false" />
         <activity
             android:name=".EditUser"
             android:exported="false" />
@@ -31,6 +45,9 @@
             android:name=".LoginActivity"
             android:exported="false" />
         <activity
+            android:name=".HomepageActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.ReserveApp.Splash">
@@ -44,6 +61,9 @@
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDKSvVv9vHGXutxnIoM4J6xD1pV46dvzvg" />
     </application>
 
 </manifest>

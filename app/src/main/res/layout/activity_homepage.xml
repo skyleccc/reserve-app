@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout
+    android:id="@+id/main"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/md_primary"
-    tools:context=".AddLocationActivity">
+    android:background="@color/md_primary">
 
     <RelativeLayout
         android:id="@+id/rl_header"
@@ -78,7 +77,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:background="@null"
-                    android:hint="Search your parking spots..."
+                    android:hint="Search for parking spots..."
                     android:paddingStart="10dp"
                     android:textColor="#000"
                     android:textSize="14sp" />
@@ -90,74 +89,23 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/addLocationContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@android:color/white"
-            app:layout_constraintTop_toBottomOf="@id/search_container"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_below="@id/search_container">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="12dp"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_mylocation"
-                    app:tint="#000000"
-                    android:layout_marginEnd="8dp" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:fontFamily="@font/inter_semibold"
-                    android:maxLines="1"
-                    android:text="Add Locations for Rent"
-                    android:textColor="#000000"
-                    android:textSize="14sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_input_add"
-                    app:tint="#000000" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <TextView
-            android:id="@+id/textView9"
+        <ProgressBar
+            android:id="@+id/progress_bar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/addLocationContainer"
-            android:layout_marginLeft="16dp"
-            android:layout_marginTop="8dp"
-            android:fontFamily="@font/inter_semibold"
-            android:text="Current Slots"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/addLocationContainer" />
+            android:layout_centerInParent="true"
+            android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/parking_list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_below="@id/textView9"
+            android:layout_below="@id/search_container"
             android:clipToPadding="false"
             android:layout_marginTop="5dp"
             android:padding="8dp"
             tools:listitem="@layout/item_parking_card" />
+
     </RelativeLayout>
 
     <include
@@ -166,5 +114,4 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>
