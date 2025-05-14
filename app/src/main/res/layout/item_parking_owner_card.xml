@@ -1,27 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp">
+    android:layout_margin="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="@android:color/white">
 
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/card_bg"
         android:orientation="vertical"
-        android:padding="12dp"
-        android:layout_margin="8dp"
-        android:elevation="4dp">
+        android:padding="12dp">
 
-        <!-- Location Title -->
+        <!-- Title section -->
         <TextView
             android:id="@+id/location_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Near Lechon House"
             android:textStyle="bold"
-            android:textSize="14sp"
-            android:textColor="#000000" />
+            android:textSize="20sp"
+            android:textColor="#000000"
+            android:ellipsize="end"
+            android:maxLines="1"/>
 
         <!-- Address -->
         <TextView
@@ -31,9 +34,11 @@
             android:text="Azalla's Lechon House, Saint Jude Street, Hippodromo, Cebu City, 6000 Cebu"
             android:textSize="12sp"
             android:textColor="#444444"
-            android:layout_marginTop="2dp" />
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="2"/>
 
-        <!-- Image and Prices Row -->
+        <!-- Map Image and Rates -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -51,47 +56,134 @@
                 android:background="@drawable/rounded_corners"
                 android:layout_marginEnd="12dp" />
 
-            <!-- Price Info -->
+            <!-- Price Info - Improved Layout -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
+                <!-- Rate header -->
                 <TextView
-                    android:id="@+id/et_rate_3h"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="3 Hours   = ₱30.00"
-                    android:textSize="12sp"
-                    android:textColor="#333333" />
+                    android:text="Parking Rates"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="#333333"
+                    android:layout_marginBottom="4dp"/>
 
-                <TextView
-                    android:id="@+id/et_rate_6h"
-                    android:layout_width="wrap_content"
+                <!-- Improved rate lines with table-like layout -->
+                <GridLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="6 Hours   = ₱100.00"
-                    android:textSize="12sp"
-                    android:textColor="#333333" />
+                    android:columnCount="3"
+                    android:rowCount="4">
 
-                <TextView
-                    android:id="@+id/et_rate_12h"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="12 Hours = ₱175.00"
-                    android:textSize="12sp"
-                    android:textColor="#333333" />
+                    <!-- 3 Hours -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3 Hours"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
 
-                <TextView
-                    android:id="@+id/per_day"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Per Day    = ₱345.00"
-                    android:textSize="12sp"
-                    android:textColor="#333333" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/et_rate_3h"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱30.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <!-- 6 Hours -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="6 Hours"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/et_rate_6h"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱100.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <!-- 12 Hours -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="12 Hours"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/et_rate_12h"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱175.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <!-- Per Day -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Per Day"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/per_day"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱345.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+                </GridLayout>
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Edit/Delete Button Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -119,6 +211,4 @@
                 android:textColor="#FFFFFF" />
         </LinearLayout>
     </LinearLayout>
-
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>

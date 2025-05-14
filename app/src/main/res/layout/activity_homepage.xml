@@ -128,13 +128,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/map_search_container"
-            android:layout_marginBottom="4dp"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
+            android:layout_marginBottom="4dp"
+            android:fontFamily="@font/inter_semibold"
             android:text="Parking Spots Near You"
-            android:textStyle="bold"
+            android:textColor="@android:color/black"
             android:textSize="16sp"
-            android:textColor="@android:color/black"/>
+            android:textStyle="bold" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/parking_list"

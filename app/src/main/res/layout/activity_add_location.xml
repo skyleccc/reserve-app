@@ -182,7 +182,7 @@
             android:clipToPadding="false"
             android:layout_marginTop="5dp"
             android:padding="8dp"
-            tools:listitem="@layout/item_parking_card" />
+            tools:listitem="@layout/item_parking_owner_card" />
     </RelativeLayout>
 
     <include

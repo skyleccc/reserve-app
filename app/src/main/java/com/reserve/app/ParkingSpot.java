@@ -9,6 +9,7 @@ public class ParkingSpot {
     String price6Hours;
     String price12Hours;
     String pricePerDay;
+    double distance;
 
     public ParkingSpot(String id, String title, String address, int imageResId,
                        String price3Hours, String price6Hours, String price12Hours, String pricePerDay) {
@@ -30,6 +31,12 @@ public class ParkingSpot {
         return address;
     }
 
+    public void setDistance(double distance) {
+        this.distance = distance;
+    }
 
+    public double getDistance() {
+        return distance;
+    }
 
 }

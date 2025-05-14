@@ -24,6 +24,10 @@ import java.util.Map;
 
 public class DatabaseHandler {
     // Callback interfaces for async operations
+    public interface OperationCallback {
+        void onSuccess();
+        void onFailure(Exception e);
+    }
     public interface AuthCallback {
         void onSuccess(FirebaseUser user);
         void onFailure(Exception e);
@@ -238,102 +242,164 @@ public class DatabaseHandler {
                 .addOnFailureListener(e -> callback.onError(e));
     }
 
-
-    public void getAllParkingSpots(boolean forceRefresh, AllParkingSpotsCallback callback) {
-        // Source parameter determines if data comes from cache first
-        Source source = forceRefresh ? Source.SERVER : Source.DEFAULT;
-
-        db.collection(COLLECTION_PARKING_SPACES)
-                .get(source)
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<ParkingSpot> spots = new ArrayList<>();
-
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        String id = doc.getId();  // Get the document ID
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
-
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
-
-                        spots.add(new ParkingSpot(id, name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay));
-                    }
-
-                    callback.onSuccess(spots);
-                })
-                .addOnFailureListener(callback::onFailure);
-    }
-
     public void saveParkingSpot(ParkingSpot spot, BooleanCallback callback) {
-        db.collection(COLLECTION_SAVED_SPACES)
-                .document(spot.id)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        // Unsave the spot if it already exists
-                        db.collection(COLLECTION_SAVED_SPACES)
-                                .document(spot.id)
-                                .delete()
-                                .addOnSuccessListener(aVoid -> callback.onResult(true))
-                                .addOnFailureListener(callback::onError);
-                    } else {
-                        // Proceed with adding new spot
-                        Map<String, Object> parkingSpotData = new HashMap<>();
-                        parkingSpotData.put("name", spot.title);
-                        parkingSpotData.put("location", spot.address);
-                        parkingSpotData.put("rate3h", Double.parseDouble(spot.price3Hours.replace("₱", "")));
-                        parkingSpotData.put("rate6h", Double.parseDouble(spot.price6Hours.replace("₱", "")));
-                        parkingSpotData.put("rate12h", Double.parseDouble(spot.price12Hours.replace("₱", "")));
-                        parkingSpotData.put("rate24h", Double.parseDouble(spot.pricePerDay.replace("₱", "")));
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
+        }
 
-                        db.collection(COLLECTION_SAVED_SPACES)
-                                .document(spot.id)
-                                .set(parkingSpotData)
-                                .addOnSuccessListener(aVoid -> callback.onResult(true))
-                                .addOnFailureListener(callback::onError);
+        String userId = currentUser.getUid();
+        DocumentReference userRef = db.collection(COLLECTION_USERS).document(userId);
 
-                    }
-                })
-                .addOnFailureListener(callback::onError);
+        // Get the user document to check current saved locations
+        userRef.get().addOnSuccessListener(documentSnapshot -> {
+            if (documentSnapshot.exists()) {
+                // Get current savedLocations or create empty list if null
+                List<String> savedLocations = (List<String>) documentSnapshot.get("savedLocations");
+                if (savedLocations == null) {
+                    savedLocations = new ArrayList<>();
+                }
+
+                boolean isAlreadySaved = savedLocations.contains(spot.id);
+
+                if (isAlreadySaved) {
+                    // Remove from saved locations (toggle off)
+                    savedLocations.remove(spot.id);
+                } else {
+                    // Add to saved locations (toggle on)
+                    savedLocations.add(spot.id);
+                }
+
+                // Update the user document with new savedLocations array
+                userRef.update("savedLocations", savedLocations)
+                        .addOnSuccessListener(aVoid -> callback.onResult(!isAlreadySaved)) // Return true if saved, false if removed
+                        .addOnFailureListener(callback::onError);
+            } else {
+                callback.onError(new Exception("User document does not exist"));
+            }
+        }).addOnFailureListener(callback::onError);
     }
 
     public void getSavedParkingSpots(SavedParkingSpotsCallback callback) {
-        db.collection(COLLECTION_SAVED_SPACES)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<ParkingSpot> spots = new ArrayList<>();
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onFailure(new IllegalStateException("User not logged in"));
+            return;
+        }
 
-                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
-                        String id = doc.getId();  // Get the document ID
-                        String name = doc.getString("name");
-                        String location = doc.getString("location");
-                        Double rate3h = doc.getDouble("rate3h");
-                        Double rate6h = doc.getDouble("rate6h");
-                        Double rate12h = doc.getDouble("rate12h");
-                        Double rate24h = doc.getDouble("rate24h");
+        String userId = currentUser.getUid();
 
-                        // Format prices
-                        String price3Hours = "₱" + String.format("%.2f", rate3h);
-                        String price6Hours = "₱" + String.format("%.2f", rate6h);
-                        String price12Hours = "₱" + String.format("%.2f", rate12h);
-                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+        // First get user's saved location IDs
+        db.collection(COLLECTION_USERS).document(userId).get()
+                .addOnSuccessListener(userDoc -> {
+                    List<String> savedLocations = (List<String>) userDoc.get("savedLocations");
 
-                        spots.add(new ParkingSpot(id, name, location,
-                                R.drawable.ic_map_placeholder, price3Hours,
-                                price6Hours, price12Hours, pricePerDay));
+                    if (savedLocations == null || savedLocations.isEmpty()) {
+                        // Return empty list if no saved spots
+                        callback.onSuccess(new ArrayList<>());
+                        return;
                     }
 
-                    callback.onSuccess(spots); // Return the retrieved list
+                    // Fetch all parking spots from the IDs
+                    List<ParkingSpot> spots = new ArrayList<>();
+                    int[] completedQueries = {0}; // Use array to modify in lambda
+
+                    for (String spotId : savedLocations) {
+                        db.collection(COLLECTION_PARKING_SPACES).document(spotId).get()
+                                .addOnSuccessListener(doc -> {
+                                    if (doc.exists()) {
+                                        String name = doc.getString("name");
+                                        String location = doc.getString("location");
+                                        Double rate3h = doc.getDouble("rate3h");
+                                        Double rate6h = doc.getDouble("rate6h");
+                                        Double rate12h = doc.getDouble("rate12h");
+                                        Double rate24h = doc.getDouble("rate24h");
+
+                                        // Format prices
+                                        String price3Hours = "₱" + String.format("%.2f", rate3h);
+                                        String price6Hours = "₱" + String.format("%.2f", rate6h);
+                                        String price12Hours = "₱" + String.format("%.2f", rate12h);
+                                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                                        ParkingSpot spot = new ParkingSpot(doc.getId(), name, location,
+                                                R.drawable.ic_map_placeholder, price3Hours,
+                                                price6Hours, price12Hours, pricePerDay);
+
+                                        spots.add(spot);
+                                    }
+
+                                    completedQueries[0]++;
+                                    if (completedQueries[0] == savedLocations.size()) {
+                                        callback.onSuccess(spots);
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    completedQueries[0]++;
+                                    if (completedQueries[0] == savedLocations.size()) {
+                                        callback.onSuccess(spots);
+                                    }
+                                });
+                    }
                 })
                 .addOnFailureListener(callback::onFailure);
+    }
+
+    public void checkIfSpotIsSaved(String spotId, BooleanCallback callback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            callback.onResult(false);
+            return;
+        }
+
+        String userId = currentUser.getUid();
+        db.collection("users").document(userId)
+                .get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        List<String> savedLocations = (List<String>) document.get("savedLocations");
+                        boolean isSaved = savedLocations != null && savedLocations.contains(spotId);
+                        callback.onResult(isSaved);
+                    } else {
+                        callback.onResult(false);
+                    }
+                })
+                .addOnFailureListener(e -> callback.onError(e));
+    }
+
+    public void removeFromSavedSpots(String spotId, OperationCallback callback) {
+        // Get the current user ID
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            callback.onFailure(new Exception("User not logged in"));
+            return;
+        }
+
+        String userId = currentUser.getUid();
+        DocumentReference userRef = db.collection(COLLECTION_USERS).document(userId);
+
+        // Get the user document to access the savedLocations array
+        userRef.get().addOnSuccessListener(documentSnapshot -> {
+            if (documentSnapshot.exists()) {
+                // Get current savedLocations array
+                List<String> savedLocations = (List<String>) documentSnapshot.get("savedLocations");
+
+                if (savedLocations == null || !savedLocations.contains(spotId)) {
+                    callback.onFailure(new Exception("Spot not found in saved locations"));
+                    return;
+                }
+
+                // Remove the spot ID from the array
+                savedLocations.remove(spotId);
+
+                // Update the user document with the modified array
+                userRef.update("savedLocations", savedLocations)
+                        .addOnSuccessListener(aVoid -> callback.onSuccess())
+                        .addOnFailureListener(callback::onFailure);
+            } else {
+                callback.onFailure(new Exception("User document does not exist"));
+            }
+        }).addOnFailureListener(callback::onFailure);
     }
 
     public void getAllParkingSpotsWithIDs(boolean forceRefresh, ParkingSpotWithIDCallback callback) {

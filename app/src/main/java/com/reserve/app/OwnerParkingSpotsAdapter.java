@@ -46,10 +46,10 @@ public class OwnerParkingSpotsAdapter extends RecyclerView.Adapter<OwnerParkingS
         holder.title.setText(spot.title);
         holder.address.setText(spot.address);
         holder.image.setImageResource(spot.imageResId);
-        holder.hour3Rate.setText("3 Hours = " + spot.price3Hours);
-        holder.hour6Rate.setText("6 Hours = " + spot.price6Hours);
-        holder.hour12Rate.setText("12 Hours = " + spot.price12Hours);
-        holder.perDayRate.setText("Per Day = " + spot.pricePerDay);
+        holder.hour3Rate.setText(spot.price3Hours);
+        holder.hour6Rate.setText(spot.price6Hours);
+        holder.hour12Rate.setText(spot.price12Hours);
+        holder.perDayRate.setText(spot.pricePerDay);
 
         // IMPORTANT: Don't store position in a final variable
         // Use holder.getBindingAdapterPosition() at click time instead

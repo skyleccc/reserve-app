@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,6 +28,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -36,16 +39,23 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Source;
 
 public class HomepageActivity extends AppCompatActivity {
     private List<ParkingSpot> parkingSpots = new ArrayList<>();
     private List<ParkingSpotWithDistance> allSpotsWithDistance = new ArrayList<>();
     private ParkingSpotAdapter adapter;
+    private FusedLocationProviderClient fusedLocationClient;
     TextView tvParkingTitle;
+    private ProgressBar progressBar;
     private boolean isDataInitialized = false;
 
     // Database
@@ -77,6 +87,9 @@ public class HomepageActivity extends AppCompatActivity {
 
         dbHandler = DatabaseHandler.getInstance(this);
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        progressBar = findViewById(R.id.progress_bar);
+
         // Parking spots list
         tvParkingTitle = findViewById(R.id.tv_parking_spots_title);
         RecyclerView parkingList = findViewById(R.id.parking_list);
@@ -102,6 +115,9 @@ public class HomepageActivity extends AppCompatActivity {
                     REQUEST_LOCATION_PERMISSION);
         }
 
+        // Initialize the FusedLocationProviderClient
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
         // Initial load parking spots
         if (!isDataInitialized) {
             // Optimization 5: Using cache
@@ -117,7 +133,7 @@ public class HomepageActivity extends AppCompatActivity {
 
         navSaved.setOnClickListener(v -> {
             // Navigate to saved
-            startActivity(new Intent(this, SavedSpots.class));
+            startActivity(new Intent(this, SavedSpotsActivity.class));
         });
 
         navUpdates.setOnClickListener(v -> {
@@ -137,7 +153,7 @@ public class HomepageActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        // Optimization 4: Only start location tracking if we don't already have a location
+        // Check if we need to get location
         SessionManager sessionManager = new SessionManager(this);
         if (sessionManager.getUserLat() == 0 && sessionManager.getUserLng() == 0) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -155,9 +171,8 @@ public class HomepageActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // Stop location updates when app is in background to save battery
-        ReserveApplication app = (ReserveApplication) getApplicationContext();
-        app.getLocationTracker().stopLocationUpdates();
+        // No need to call app.getLocationTracker().stopLocationUpdates() anymore
+        // Our implementation stops updates after getting location once
     }
 
     @Override
@@ -185,48 +200,90 @@ public class HomepageActivity extends AppCompatActivity {
     // Optimization 4: Improved location tracking
     private void startLocationTracking() {
         SessionManager sessionManager = new SessionManager(this);
-        ReserveApplication app = (ReserveApplication) getApplicationContext();
 
-        // Only start if we don't have a location yet
-        if (sessionManager.getUserLat() == 0 && sessionManager.getUserLng() == 0) {
-            app.startLocationTracking(location -> {
-                // Save location to session
-                sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
 
-                // Save to Firebase if user is logged in using DatabaseHandler
-                String userId = sessionManager.getUserId();
-                if (userId != null) {
-                    dbHandler.updateUserLocation(userId, location.getLatitude(), location.getLongitude(),
-                            new DatabaseHandler.BooleanCallback() {
-                                @Override
-                                public void onResult(boolean result) {
-                                    // Success - no action needed
-                                }
+        // Show progress while getting location
+        findViewById(R.id.progress_bar).setVisibility(View.VISIBLE);
 
-                                @Override
-                                public void onError(Exception e) {
-                                    // Optional: handle error
-                                }
-                            });
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        // Save location to session
+                        sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+
+                        // Save to Firebase if user is logged in
+                        String userId = sessionManager.getUserId();
+                        if (userId != null) {
+                            dbHandler.updateUserLocation(userId, location.getLatitude(), location.getLongitude(),
+                                    new DatabaseHandler.BooleanCallback() {
+                                        @Override
+                                        public void onResult(boolean result) {
+                                            // Success - no action needed
+                                        }
+
+                                        @Override
+                                        public void onError(Exception e) {
+                                            // Optional: handle error
+                                        }
+                                    });
+                        }
+
+                        // Load nearby parking spots with the new location
+                        loadNearbyParkingSpots(true);
+                    } else {
+                        // If last location is null, request location updates
+                        requestLocationUpdates();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    findViewById(R.id.progress_bar).setVisibility(View.GONE);
+                    Toast.makeText(this, "Failed to get location: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    // Additional method for requesting updates when last location is null
+    private void requestLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+                .setWaitForAccurateLocation(true)
+                .setMinUpdateIntervalMillis(2000)
+                .setMaxUpdateDelayMillis(10000)
+                .build();
+
+        LocationCallback locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    return;
                 }
 
-                // Load nearby parking spots after getting location
-                loadNearbyParkingSpots(true);
+                // Stop receiving updates after first result
+                fusedLocationClient.removeLocationUpdates(this);
 
-                // Stop continuous updates after getting location once
-                app.getLocationTracker().stopLocationUpdates();
-            });
-        } else {
-            // Use cached location and update in background
-            loadNearbyParkingSpots(false);
-        }
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    SessionManager sessionManager = new SessionManager(HomepageActivity.this);
+                    sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+                    loadNearbyParkingSpots(true);
+                }
+            }
+        };
+
+        fusedLocationClient.requestLocationUpdates(locationRequest,
+                locationCallback, Looper.getMainLooper());
     }
 
     // Optimization 5: Cache for Firestore data
     private void loadNearbyParkingSpots(boolean showLoadingIndicator) {
-        // Get reference to the progress bar
-        ProgressBar progressBar = findViewById(R.id.progress_bar);
-
         // Show loading indicator if needed
         if (showLoadingIndicator) {
             progressBar.setVisibility(View.VISIBLE);
@@ -362,7 +419,6 @@ public class HomepageActivity extends AppCompatActivity {
         List<ParkingSpotWithDistance> newSpotsWithDistance = new ArrayList<>();
 
         // Show loading only if flag is set
-        ProgressBar progressBar = findViewById(R.id.progress_bar);
         if (showLoadingIndicator) {
             progressBar.setVisibility(View.VISIBLE);
         }
@@ -379,7 +435,7 @@ public class HomepageActivity extends AppCompatActivity {
         // Store all spots with distance for searching
         allSpotsWithDistance = new ArrayList<>(spotsWithDistance);
 
-        // Optimization 3: More efficient filtering using streams
+        // Filter spots by distance using stream
         List<ParkingSpot> filteredSpots = spotsWithDistance.stream()
                 .filter(spd -> spd.distance <= maxDistanceKm)
                 .sorted(Comparator.comparingDouble(spd -> spd.distance))
@@ -392,9 +448,10 @@ public class HomepageActivity extends AppCompatActivity {
             parkingSpots.clear();
             parkingSpots.addAll(filteredSpots);
 
-            // Update the existing adapter
+            // Update the adapter with both spots and distances
             if (adapter != null) {
-                adapter.notifyDataSetChanged();
+                adapter.updateSpots(filteredSpots);
+                adapter.setDistanceData(this, allSpotsWithDistance);
             }
         }
     }
@@ -552,7 +609,7 @@ public class HomepageActivity extends AppCompatActivity {
     }
 
     // Helper class to store spot with its distance
-    private static class ParkingSpotWithDistance {
+    public static class ParkingSpotWithDistance {
         ParkingSpot spot;
         double distance;
 
@@ -562,17 +619,10 @@ public class HomepageActivity extends AppCompatActivity {
         }
     }
 
-    // Calculate distance between two coordinates using Haversine formula
+    // Calculate distance between two coordinates
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // Radius of the earth in km
-
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c; // Distance in km
+        float[] results = new float[1];
+        Location.distanceBetween(lat1, lon1, lat2, lon2, results);
+        return results[0] / 1000;
     }
 }

@@ -1,62 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp">
+    android:layout_margin="12dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="@android:color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/card_bg"
         android:orientation="vertical"
-        android:padding="12dp"
-        android:layout_margin="8dp"
-        android:elevation="4dp">
+        android:padding="12dp">
 
-        <!-- Location Title -->
-        <LinearLayout
+        <!-- Title and Banner in same line -->
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal">
+            android:layout_height="wrap_content">
 
-            <LinearLayout
-                android:layout_width="310dp"
+            <!-- Location Title -->
+            <TextView
+                android:id="@+id/location_title"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:layout_alignParentStart="true"
+                android:layout_toStartOf="@+id/saveBtn"
+                android:text="Near Lechon House"
+                android:textStyle="bold"
+                android:textSize="20sp"
+                android:textColor="#000000"
+                android:ellipsize="end"
+                android:maxLines="1"/>
 
-                <TextView
-                    android:id="@+id/location_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Near Lechon House"
-                    android:textColor="#000000"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
+            <!-- Address - now in the RelativeLayout -->
+            <TextView
+                android:id="@+id/location_address"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/location_title"
+                android:layout_alignParentStart="true"
+                android:layout_toStartOf="@+id/saveBtn"
+                android:text="Azalla's Lechon House, Saint Jude Street, Hippodromo, Cebu City, 6000 Cebu"
+                android:textSize="12sp"
+                android:textColor="#444444"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="2"/>
 
-                <TextView
-                    android:id="@+id/location_address"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Azalla's Lechon House, Saint Jude Street, Hippodromo, Cebu City, 6000 Cebu"
-                    android:textColor="#444444"
-                    android:textSize="16sp" />
-
-            </LinearLayout>
-
+            <!-- Banner Icon at right -->
             <ImageButton
                 android:id="@+id/saveBtn"
-                android:layout_width="45dp"
-                android:clickable="true"
-                android:background="@null"
-                android:layout_height="42dp"
-                app:srcCompat="@drawable/ic_saved" />
-        </LinearLayout>
+                android:layout_width="32dp"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_bookmark_banner"
+                app:tint="#757575"
+                android:contentDescription="Save spot" />
+        </RelativeLayout>
 
-        <!-- Address -->
-
-        <!-- Image and Prices Row -->
+        <!-- Map Image and Rates -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,66 +71,171 @@
             <!-- Map Image -->
             <ImageView
                 android:id="@+id/map_thumbnail"
-                android:layout_width="140dp"
-                android:layout_height="100dp"
+                android:layout_width="120dp"
+                android:layout_height="80dp"
                 android:src="@drawable/ic_map_placeholder"
                 android:scaleType="centerCrop"
                 android:background="@drawable/rounded_corners"
                 android:layout_marginEnd="12dp" />
 
-            <!-- Price Info -->
+            <!-- Price Info - Improved Layout -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
+                <!-- Rate header -->
                 <TextView
-                    android:id="@+id/et_rate_3h"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="3 Hours   = ₱30.00"
-                    android:textSize="16sp"
-                    android:textColor="#333333" />
+                    android:text="Parking Rates"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="#333333"
+                    android:layout_marginBottom="4dp"/>
 
-                <TextView
-                    android:id="@+id/et_rate_6h"
-                    android:layout_width="wrap_content"
+                <!-- Improved rate lines with table-like layout -->
+                <GridLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="6 Hours   = ₱100.00"
-                    android:textSize="16sp"
-                    android:textColor="#333333" />
+                    android:columnCount="3"
+                    android:rowCount="4">
 
-                <TextView
-                    android:id="@+id/et_rate_12h"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="12 Hours = ₱175.00"
-                    android:textSize="16sp"
-                    android:textColor="#333333" />
+                    <!-- 3 Hours -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3 Hours"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
 
-                <TextView
-                    android:id="@+id/per_day"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Per Day    = ₱345.00"
-                    android:textSize="16sp"
-                    android:textColor="#333333" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/et_rate_3h"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱30.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <!-- 6 Hours -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="6 Hours"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/et_rate_6h"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱100.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <!-- 12 Hours -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="12 Hours"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/et_rate_12h"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱175.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <!-- Per Day -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Per Day"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="="
+                        android:textSize="12sp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/per_day"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱345.00"
+                        android:textSize="12sp"
+                        android:textColor="#333333" />
+                </GridLayout>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Book Now Button -->
-        <Button
-            android:id="@+id/book_button"
-            android:layout_width="wrap_content"
+        <!-- Distance and Book Now Button in same row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Book Now!"
-            android:textAllCaps="false"
-            android:backgroundTint="#4B4B4B"
-            android:textColor="#FFFFFF"
-            android:layout_gravity="end"
-            android:layout_marginTop="8dp" />
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+
+            <!-- Distance -->
+            <TextView
+                android:id="@+id/tv_distance"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="2.5 km away"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#4B4B4B"
+                android:drawableStart="@drawable/location_on_24px"
+                android:drawablePadding="4dp"
+                android:gravity="center_vertical" />
+
+            <!-- Book Now Button -->
+            <Button
+                android:id="@+id/book_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Book Now!"
+                android:textAllCaps="false"
+                android:backgroundTint="#4B4B4B"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
     </LinearLayout>
-
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>

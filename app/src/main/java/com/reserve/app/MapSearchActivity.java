@@ -203,7 +203,7 @@ public class MapSearchActivity extends AppCompatActivity implements OnMapReadyCa
         // Fill the details card
         tvParkingName.setText(info.spot.title);
         tvParkingLocation.setText(info.spot.address);
-        tvParkingDistance.setText(String.format("%.1f km away", info.distance));
+        tvParkingDistance.setText(String.format("%.2f km away", info.distance));
         tvRate3h.setText(info.spot.price3Hours);
         tvRate6h.setText(info.spot.price6Hours);
         tvRate12h.setText(info.spot.price12Hours);

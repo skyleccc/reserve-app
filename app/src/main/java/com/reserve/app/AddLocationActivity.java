@@ -1,13 +1,17 @@
 package com.reserve.app;
 
+import android.Manifest;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -16,6 +20,7 @@ import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -24,12 +29,19 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -59,6 +71,7 @@ public class AddLocationActivity extends AppCompatActivity {
     // Locations
     Dialog currentLocationDialog;
     String selectedLocationAddress = "";
+    private FusedLocationProviderClient fusedLocationClient;
     private static final int MAP_LOCATION_REQUEST_CODE = 100;
 
     // Parking Spots
@@ -110,6 +123,9 @@ public class AddLocationActivity extends AppCompatActivity {
         // Access Database
         dbHandler = DatabaseHandler.getInstance(this);
 
+        // Location client
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
         // Initialize adapter and RecyclerView
         parkingList.setLayoutManager(new LinearLayoutManager(this));
         adapter = new OwnerParkingSpotsAdapter(this, parkingSpots, new String[0],
@@ -144,7 +160,7 @@ public class AddLocationActivity extends AppCompatActivity {
 
         ivProfile.setOnClickListener(v -> startActivity(new Intent(this, ProfileActivity.class)));
 
-        navExplore.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
+        navExplore.setOnClickListener(v -> startActivity(new Intent(this, SavedSpotsActivity.class)));
 
         navSaved.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
 
@@ -228,31 +244,88 @@ public class AddLocationActivity extends AppCompatActivity {
     private void initLocationTracking() {
         SessionManager sessionManager = new SessionManager(this);
         if (sessionManager.getUserLat() == 0 && sessionManager.getUserLng() == 0) {
-            ReserveApplication app = (ReserveApplication) getApplicationContext();
-            app.startLocationTracking(location -> {
-                sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
 
-                // Save to Firebase if user is logged in
-                String userId = sessionManager.getUserId();
-                if (userId != null) {
-                    dbHandler.updateUserLocation(userId, location.getLatitude(), location.getLongitude(),
-                            new DatabaseHandler.BooleanCallback() {
-                                @Override
-                                public void onResult(boolean result) {
-                                    // Success handled silently
-                                }
+            // Show progress while getting location
+            progressBar.setVisibility(View.VISIBLE);
 
-                                @Override
-                                public void onError(Exception e) {
-                                    // Optional: you could log the error or show a toast
-                                }
-                            });
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, location -> {
+                        if (location != null) {
+                            // Save location to session
+                            sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+
+                            // Save to Firebase if user is logged in
+                            String userId = sessionManager.getUserId();
+                            if (userId != null) {
+                                dbHandler.updateUserLocation(userId, location.getLatitude(), location.getLongitude(),
+                                        new DatabaseHandler.BooleanCallback() {
+                                            @Override
+                                            public void onResult(boolean result) {
+                                                // Success - no action needed
+                                            }
+
+                                            @Override
+                                            public void onError(Exception e) {
+                                                // Optional: handle error
+                                            }
+                                        });
+                            }
+                        } else {
+                            // If last location is null, request location updates
+                            requestLocationUpdates();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(this, "Failed to get location: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    });
+        }
+    }
+
+    private void requestLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+                .setWaitForAccurateLocation(true)
+                .setMinUpdateIntervalMillis(2000)
+                .setMaxUpdateDelayMillis(10000)
+                .build();
+
+        LocationCallback locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    return;
                 }
 
-                // Stop updates after getting location once
-                app.getLocationTracker().stopLocationUpdates();
-            });
-        }
+                // Stop receiving updates after first result
+                fusedLocationClient.removeLocationUpdates(this);
+
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    SessionManager sessionManager = new SessionManager(AddLocationActivity.this);
+                    sessionManager.saveUserLocation(location.getLatitude(), location.getLongitude());
+                }
+            }
+        };
+
+        fusedLocationClient.requestLocationUpdates(locationRequest,
+                locationCallback, Looper.getMainLooper());
+    }
+
+    // Add this method to calculate distance consistently
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        float[] results = new float[1];
+        Location.distanceBetween(lat1, lon1, lat2, lon2, results);
+        return results[0] / 1000; // Convert meters to kilometers
     }
 
     private void showAddLocationForm() {
@@ -278,7 +351,7 @@ public class AddLocationActivity extends AppCompatActivity {
         Button btnSave = currentLocationDialog.findViewById(R.id.btn_save);
 
         // Added Close Button to add location forms
-        Button btnClose = currentLocationDialog.findViewById(R.id.btn_close); // Assuming you've assigned the ID for the "X" button
+        ImageButton btnClose = currentLocationDialog.findViewById(R.id.btn_close);
         btnClose.setOnClickListener(v -> {
             currentLocationDialog.dismiss(); // Close the dialog
         });
@@ -562,6 +635,11 @@ public class AddLocationActivity extends AppCompatActivity {
         Button btnPickLocation = editDialog.findViewById(R.id.btn_pick_location);
         Button btnSave = editDialog.findViewById(R.id.btn_save);
 
+        ImageButton btnClose = editDialog.findViewById(R.id.btn_close);
+        btnClose.setOnClickListener(v -> {
+            editDialog.dismiss(); // Close the dialog
+        });
+
         // Populate fields with existing data
         etName.setText(name);
         selectedLocationAddress = location;
@@ -705,11 +783,5 @@ public class AddLocationActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Stop location updates when app is in background to save battery
-        ReserveApplication app = (ReserveApplication) getApplicationContext();
-        if (app.getLocationTracker() != null) {
-            app.getLocationTracker().stopLocationUpdates();
-        }
     }
 }

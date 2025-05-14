@@ -49,6 +49,8 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
     private String spotId, spotName, spotLocation, price3h, price6h, price12h, price24h;
     private TextView rate3hTextView, rate6hTextView, rate12hTextView, rate24hTextView, tvTotalAmount;
     private CardView duration3hCard, duration6hCard, duration12hCard, duration24hCard;
+    private ImageButton btnBookmark;
+    private boolean isSaved = false;
     private int selectedDuration = 3;
     private GoogleMap mMap;
     private static final float DEFAULT_ZOOM = 15f;
@@ -98,6 +100,10 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
         rate12hTextView = findViewById(R.id.rate_12h);
         rate24hTextView = findViewById(R.id.rate_24h);
         tvTotalAmount = findViewById(R.id.tv_total_amount);
+        btnBookmark = findViewById(R.id.btn_bookmark);
+
+        // Check if spot is saved
+        checkIfSpotIsSaved();
 
         // Set parking spot details
         tvSpotName.setText(spotName);
@@ -109,6 +115,9 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
 
         // Set back button click listener
         backButton.setOnClickListener(v -> finish());
+
+        // Set click listener for bookmark button
+        btnBookmark.setOnClickListener(v -> toggleSaveSpot());
 
         // Set up "Book Now" button click listener
         btnBookNow.setOnClickListener(v -> bookParkingSpot());
@@ -122,6 +131,73 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
 
         fetchParkingSpotOwnerInfo();
         setupDurationCards();
+    }
+
+    private void checkIfSpotIsSaved() {
+        if (spotId == null || spotId.isEmpty()) {
+            return;
+        }
+
+        dbHandler.checkIfSpotIsSaved(spotId, new DatabaseHandler.BooleanCallback() {
+            @Override
+            public void onResult(boolean result) {
+                isSaved = result;
+                updateBookmarkIcon();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(BookingActivity.this,
+                        "Error checking saved status: " + e.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void updateBookmarkIcon() {
+        if (isSaved) {
+            btnBookmark.setColorFilter(Color.parseColor("#FFC107")); // Yellow for saved
+        } else {
+            btnBookmark.setColorFilter(Color.parseColor("#757575")); // Gray for not saved
+        }
+    }
+
+    private void toggleSaveSpot() {
+        if (spotId == null || spotId.isEmpty()) {
+            return;
+        }
+
+        // Create a ParkingSpot object with the available information
+        ParkingSpot spot = new ParkingSpot(
+                spotId,
+                spotName,
+                spotLocation,
+                R.drawable.ic_map_placeholder,
+                price3h,
+                price6h,
+                price12h,
+                price24h
+        );
+
+        dbHandler.saveParkingSpot(spot, new DatabaseHandler.BooleanCallback() {
+            @Override
+            public void onResult(boolean result) {
+                isSaved = result; // result is true if saved, false if removed
+                updateBookmarkIcon();
+
+                String message = result ?
+                        "Added to saved spots" :
+                        "Removed from saved spots";
+                Toast.makeText(BookingActivity.this, message, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(BookingActivity.this,
+                        "Error updating saved status: " + e.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
