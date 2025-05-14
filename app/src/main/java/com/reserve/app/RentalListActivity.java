@@ -7,6 +7,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,6 +32,7 @@ public class RentalListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private RentalAdapter adapter;
     private Spinner spinnerRentalType;
+    private TextView tvEmptyRentals;
     private FirebaseFirestore db;
     private List<Rental> rentalsList = new ArrayList<>();
 
@@ -54,6 +56,7 @@ public class RentalListActivity extends AppCompatActivity {
         LinearLayout navUpdates = findViewById(R.id.nav_updates);
         LinearLayout navAdd = findViewById(R.id.nav_add);
         ShapeableImageView navProfile = findViewById(R.id.iv_profile);
+        tvEmptyRentals = findViewById(R.id.tv_empty_rentals);
 
         navExplore.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
         navSaved.setOnClickListener(v -> startActivity(new Intent(this, SavedSpotsActivity.class)));
@@ -79,12 +82,16 @@ public class RentalListActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 // position 0: Current Rentals, position 1: Past Rentals
                 adapter.setShowCurrentRentals(position == 0);
+
+                // Check if the filtered list is empty and update empty state visibility
+                checkEmptyState();
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 // Default to show current rentals
                 adapter.setShowCurrentRentals(true);
+                checkEmptyState();
             }
         });
 
@@ -95,6 +102,9 @@ public class RentalListActivity extends AppCompatActivity {
     private void loadRentals() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) {
+            // Show empty state when user isn't logged in
+            tvEmptyRentals.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
             return;
         }
 
@@ -109,6 +119,9 @@ public class RentalListActivity extends AppCompatActivity {
                         if (rentalDocs.isEmpty()) {
                             // Update adapter with empty list
                             adapter.setRentals(tempList);
+                            // Show empty state
+                            tvEmptyRentals.setVisibility(View.VISIBLE);
+                            recyclerView.setVisibility(View.GONE);
                             return;
                         }
 
@@ -151,12 +164,30 @@ public class RentalListActivity extends AppCompatActivity {
                                                     rentalsList.clear();
                                                     rentalsList.addAll(tempList);
                                                     adapter.setRentals(rentalsList);
+
+                                                    // Check if the filtered list is empty
+                                                    checkEmptyState();
                                                 }
+                                            }else {
+                                                // Show empty state if there was an error
+                                                tvEmptyRentals.setVisibility(View.VISIBLE);
+                                                recyclerView.setVisibility(View.GONE);
                                             }
                                         });
                             }
                         }
                     }
                 });
+    }
+
+    // Add this helper method to check for empty state
+    private void checkEmptyState() {
+        if (adapter.getItemCount() == 0) {
+            recyclerView.setVisibility(View.GONE);
+            tvEmptyRentals.setVisibility(View.VISIBLE);
+        } else {
+            recyclerView.setVisibility(View.VISIBLE);
+            tvEmptyRentals.setVisibility(View.GONE);
+        }
     }
 }

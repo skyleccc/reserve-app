@@ -55,7 +55,9 @@ public class HomepageActivity extends AppCompatActivity {
     private ParkingSpotAdapter adapter;
     private FusedLocationProviderClient fusedLocationClient;
     TextView tvParkingTitle;
+    private TextView tvEmptyParkingSpots;
     private ProgressBar progressBar;
+    private boolean isLoadingData = false;
     private boolean isDataInitialized = false;
 
     // Database
@@ -89,6 +91,7 @@ public class HomepageActivity extends AppCompatActivity {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         progressBar = findViewById(R.id.progress_bar);
+        tvEmptyParkingSpots = findViewById(R.id.tv_empty_parking_spots);
 
         // Parking spots list
         tvParkingTitle = findViewById(R.id.tv_parking_spots_title);
@@ -285,6 +288,12 @@ public class HomepageActivity extends AppCompatActivity {
 
     // Optimization 5: Cache for Firestore data
     private void loadNearbyParkingSpots(boolean showLoadingIndicator) {
+        // Prevent duplicate concurrent loading
+        if (isLoadingData) {
+            return;
+        }
+        isLoadingData = true;
+
         // Show loading indicator if needed
         if (showLoadingIndicator) {
             progressBar.setVisibility(View.VISIBLE);
@@ -353,6 +362,8 @@ public class HomepageActivity extends AppCompatActivity {
                 if (showLoadingIndicator) {
                     progressBar.setVisibility(View.GONE);
                 }
+
+                isLoadingData = false;
             }
 
             @Override
@@ -360,9 +371,14 @@ public class HomepageActivity extends AppCompatActivity {
                 // Hide loading indicator on failure
                 if (showLoadingIndicator) {
                     progressBar.setVisibility(View.GONE);
+                    tvEmptyParkingSpots.setText("Failed to load parking spots");
+                    tvEmptyParkingSpots.setVisibility(View.VISIBLE);
+                    findViewById(R.id.parking_list).setVisibility(View.GONE);
                     Toast.makeText(HomepageActivity.this, "Failed to load parking spots: " +
                             e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
+
+                isLoadingData = false;
             }
         });
     }
@@ -443,11 +459,17 @@ public class HomepageActivity extends AppCompatActivity {
                 .map(spd -> spd.spot)
                 .collect(Collectors.toList());
 
-        // Only update if we have new data
-        if (!filteredSpots.isEmpty()) {
-            // Update the main list
-            parkingSpots.clear();
-            parkingSpots.addAll(filteredSpots);
+        // Update the main list
+        parkingSpots.clear();
+        parkingSpots.addAll(filteredSpots);
+
+        // Check if we have spots to display
+        if (filteredSpots.isEmpty()) {
+            tvEmptyParkingSpots.setVisibility(View.VISIBLE);
+            findViewById(R.id.parking_list).setVisibility(View.GONE);
+        } else {
+            tvEmptyParkingSpots.setVisibility(View.GONE);
+            findViewById(R.id.parking_list).setVisibility(View.VISIBLE);
 
             // Update the adapter with both spots and distances
             if (adapter != null) {
@@ -591,7 +613,15 @@ public class HomepageActivity extends AppCompatActivity {
                     .map(spd -> spd.spot)
                     .collect(Collectors.toList());
 
-            adapter.updateSpots(filteredSpots);
+            // Check if we have spots to display after filtering
+            if (filteredSpots.isEmpty()) {
+                tvEmptyParkingSpots.setVisibility(View.VISIBLE);
+                findViewById(R.id.parking_list).setVisibility(View.GONE);
+            } else {
+                tvEmptyParkingSpots.setVisibility(View.GONE);
+                findViewById(R.id.parking_list).setVisibility(View.VISIBLE);
+                adapter.updateSpots(filteredSpots);
+            }
             return;
         }
 
@@ -606,7 +636,16 @@ public class HomepageActivity extends AppCompatActivity {
                 .map(spd -> spd.spot)
                 .collect(Collectors.toList());
 
-        adapter.updateSpots(filteredSpots);
+        // Check if search results are empty
+        if (filteredSpots.isEmpty()) {
+            tvEmptyParkingSpots.setText("No parking spots match your search");
+            tvEmptyParkingSpots.setVisibility(View.VISIBLE);
+            findViewById(R.id.parking_list).setVisibility(View.GONE);
+        } else {
+            tvEmptyParkingSpots.setVisibility(View.GONE);
+            findViewById(R.id.parking_list).setVisibility(View.VISIBLE);
+            adapter.updateSpots(filteredSpots);
+        }
     }
 
     // Helper class to store spot with its distance

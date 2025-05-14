@@ -9,9 +9,11 @@ import android.Manifest;
         import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-        import android.widget.Toast;
+import android.widget.TextView;
+import android.widget.Toast;
 
         import androidx.activity.EdgeToEdge;
         import androidx.annotation.NonNull;
@@ -38,6 +40,7 @@ public class SavedSpotsActivity extends AppCompatActivity {
     private SavedSpotsAdapter adapter;
     private List<ParkingSpot> allParkingSpots = new ArrayList<>();
     private EditText searchEditText;
+    private TextView tvEmptyState;
     private DatabaseHandler dbHandler;
     private FusedLocationProviderClient fusedLocationClient;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
@@ -68,6 +71,9 @@ public class SavedSpotsActivity extends AppCompatActivity {
         // Initialize search functionality
         searchEditText = findViewById(R.id.search_edit_text);
         setupSearch();
+
+        // Initialize empty state TextView
+        tvEmptyState = findViewById(R.id.tv_empty_state);
 
         // Request location after setup is complete
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -152,9 +158,15 @@ public class SavedSpotsActivity extends AppCompatActivity {
             @Override
             public void onSuccess(List<ParkingSpot> spots) {
                 if (spots.isEmpty()) {
-                    // Show empty state if needed`
+                    // Show empty state message
+                    tvEmptyState.setVisibility(View.VISIBLE);
+                    savedList.setVisibility(View.GONE);
                     return;
                 }
+
+                // Hide empty state message and show the list
+                tvEmptyState.setVisibility(View.GONE);
+                savedList.setVisibility(View.VISIBLE);
 
                 // When spots are fetched, reset allParkingSpots
                 allParkingSpots.clear();
@@ -213,6 +225,9 @@ public class SavedSpotsActivity extends AppCompatActivity {
             public void onFailure(Exception e) {
                 Toast.makeText(SavedSpotsActivity.this, "Failed to load saved spots: " + e.getMessage(),
                         Toast.LENGTH_SHORT).show();
+                // Show empty state on error too
+                tvEmptyState.setVisibility(View.VISIBLE);
+                savedList.setVisibility(View.GONE);
             }
         });
     }
@@ -238,6 +253,15 @@ public class SavedSpotsActivity extends AppCompatActivity {
                     parkingSpots.add(spot);
                 }
             }
+        }
+
+        // After filtering, check if results are empty
+        if (parkingSpots.isEmpty()) {
+            tvEmptyState.setVisibility(View.VISIBLE);
+            savedList.setVisibility(View.GONE);
+        } else {
+            tvEmptyState.setVisibility(View.GONE);
+            savedList.setVisibility(View.VISIBLE);
         }
 
         // Update the adapter

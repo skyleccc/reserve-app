@@ -70,6 +70,20 @@
             android:background="@drawable/spinner_background"
             android:padding="8dp" />
 
+        <TextView
+            android:id="@+id/tv_empty_rentals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/spinner_rental_type"
+            android:layout_centerInParent="true"
+            android:layout_marginTop="50dp"
+            android:gravity="center"
+            android:text="No rentals found"
+            android:textSize="16sp"
+            android:visibility="gone"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="#757575" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rentals_list"
             android:layout_width="match_parent"

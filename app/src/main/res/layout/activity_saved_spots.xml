@@ -104,6 +104,20 @@
             android:fontFamily="@font/inter_semibold"
             android:textColor="@android:color/black"/>
 
+        <TextView
+            android:id="@+id/tv_empty_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/saved_parking_spots"
+            android:layout_centerInParent="true"
+            android:layout_marginTop="50dp"
+            android:gravity="center"
+            android:text="No saved spots found"
+            android:textSize="16sp"
+            android:visibility="gone"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="#757575" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/saved_list"
             android:layout_width="match_parent"
