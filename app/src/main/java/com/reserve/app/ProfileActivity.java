@@ -15,6 +15,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class ProfileActivity extends AppCompatActivity {
@@ -39,6 +40,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         accountBtn = findViewById(R.id.accountLayout);
         logoutBtn = findViewById(R.id.logoutBtn);
+        MaterialButton backBtn = findViewById(R.id.btn_back);
 
         initializeUI();
 
@@ -48,6 +50,10 @@ public class ProfileActivity extends AppCompatActivity {
 
         logoutBtn.setOnClickListener(v -> {
             signOut();
+        });
+
+        backBtn.setOnClickListener(v -> {
+            finish();
         });
     }
 
