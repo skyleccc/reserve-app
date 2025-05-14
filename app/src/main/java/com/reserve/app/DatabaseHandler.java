@@ -7,6 +7,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
@@ -631,6 +632,22 @@ public class DatabaseHandler {
                         callback.onFailure(task.getException());
                     }
                 });
+    }
+
+    public void reauthenticateUser(String email, String password, BooleanCallback callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
+        }
+
+        // Create credential
+        AuthCredential credential = EmailAuthProvider.getCredential(email, password);
+
+        // Reauthenticate
+        currentUser.reauthenticate(credential)
+                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                .addOnFailureListener(e -> callback.onResult(false));
     }
 
     public void signInWithGoogle(AuthCredential credential, AuthCallback callback) {
