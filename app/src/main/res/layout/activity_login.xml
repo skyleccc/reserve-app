@@ -156,23 +156,6 @@
             app:layout_constraintTop_toBottomOf="@+id/textTextView2" />
 
         <TextView
-            android:id="@+id/buttonApple"
-            android:layout_width="350dp"
-            android:layout_height="40dp"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/rounded_square"
-            android:backgroundTint="@color/md_button"
-            android:gravity="center"
-            android:text="Continue with Apple"
-            android:textSize="14dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/buttonGoogle" />
-
-        <TextView
             android:id="@+id/footerTextView"
             android:layout_width="350dp"
             android:layout_height="wrap_content"
@@ -184,7 +167,7 @@
             android:textAlignment="center"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/buttonApple" />
+            app:layout_constraintTop_toBottomOf="@+id/buttonGoogle" />
 
         <TextView
             android:id="@+id/createAccountTextView"

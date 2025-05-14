@@ -246,7 +246,6 @@
                 android:id="@+id/buttonCreateGoogle"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
-                android:layout_marginEnd="8dp"
                 android:background="@drawable/rounded_square"
                 android:backgroundTint="@color/md_button"
                 android:clickable="true"
@@ -255,26 +254,10 @@
                 android:gravity="center"
                 android:text="Continue with Google"
                 android:textSize="14dp"
-                app:layout_constraintEnd_toStartOf="@+id/buttonCreateApple"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <TextView
-                android:id="@+id/buttonCreateApple"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/rounded_square"
-                android:backgroundTint="@color/md_button"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                android:gravity="center"
-                android:text="Continue with Apple"
-                android:textSize="14dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/buttonCreateGoogle"
-                app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <TextView

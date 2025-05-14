@@ -43,11 +43,6 @@ public class DatabaseHandler {
         void onFailure(Exception e);
     }
 
-    public interface AllParkingSpotsCallback {
-        void onSuccess(List<ParkingSpot> spots);
-        void onFailure(Exception e);
-    }
-
     public interface ParkingSpotsCallback {
         void onSuccess(List<ParkingSpot> spots, String[] spotIds);
         void onFailure(Exception e);
@@ -515,6 +510,43 @@ public class DatabaseHandler {
                 .add(rental)
                 .addOnSuccessListener(doc -> callback.onResult(true))
                 .addOnFailureListener(e -> callback.onError(e));
+    }
+
+    public void extendRentalTime(String spotId, String newEndTime, int currentDuration, int additionalHours, BooleanCallback callback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new IllegalStateException("User not logged in"));
+            return;
+        }
+
+        db.collection(COLLECTION_RENTALS)
+                .whereEqualTo("parkingSpaceId", spotId)
+                .whereEqualTo("userId", currentUser.getUid())
+                .whereEqualTo("status", "Pending")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        DocumentSnapshot rentalDoc = queryDocumentSnapshots.getDocuments().get(0);
+
+                        Map<String, Object> updates = new HashMap<>();
+                        updates.put("endTime", newEndTime);
+
+                        if (rentalDoc.contains("totalCost")) {
+                            double currentCost = rentalDoc.getDouble("totalCost");
+                            double hourlyRate = currentCost / currentDuration;
+                            double additionalCost = hourlyRate * additionalHours;
+                            updates.put("totalCost", currentCost + additionalCost);
+                        }
+
+                        db.collection(COLLECTION_RENTALS).document(rentalDoc.getId())
+                                .update(updates)
+                                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                                .addOnFailureListener(e -> callback.onError(e));
+                    } else {
+                        callback.onError(new Exception("No active rental found for this parking spot"));
+                    }
+                })
+                .addOnFailureListener(callback::onError);
     }
 
     // Message creation

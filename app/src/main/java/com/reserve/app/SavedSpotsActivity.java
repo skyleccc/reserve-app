@@ -91,9 +91,7 @@ public class SavedSpotsActivity extends AppCompatActivity {
         ShapeableImageView navProfile = findViewById(R.id.iv_profile);
 
         navExplore.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
-        navUpdates.setOnClickListener(v -> {
-            // Navigate to updates
-        });
+        navUpdates.setOnClickListener(v -> startActivity(new Intent(this, RentalListActivity.class)));
         navAdd.setOnClickListener(v -> startActivity(new Intent(this, AddLocationActivity.class)));
         navProfile.setOnClickListener(v -> startActivity(new Intent(this, ProfileActivity.class)));
     }

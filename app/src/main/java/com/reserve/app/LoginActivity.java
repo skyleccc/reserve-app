@@ -34,7 +34,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginActivity extends AppCompatActivity {
-    private TextView loginButton, loginGoogleButton, loginAppleButton, createAccountButton;
+    private TextView loginButton, loginGoogleButton, createAccountButton;
     private TextView header1TextView, header2TextView, footerTextView, errorMessageTextView;
     private TextView[] textTextViews = new TextView[2];
     private com.google.android.material.textfield.TextInputEditText emailEditText, passwordEditText;
@@ -85,7 +85,20 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(DocumentSnapshot document) {
                     if (document.exists()) {
-                        // Existing code to save user session
+                        // Properly save user session
+                        sessionManager.saveUserSession(
+                                user.getUid(),
+                                document.getString("firstName"),
+                                document.getString("lastName"),
+                                document.getString("email"),
+                                document.getString("phone"),
+                                document.getString("authType")
+                        );
+
+                        // Navigate to homepage after restoring session
+                        Intent intent = new Intent(LoginActivity.this, HomepageActivity.class);
+                        startActivity(intent);
+                        finish();
                     } else {
                         // Handle missing user data
                         databaseHandler.signOut();
@@ -107,9 +120,6 @@ public class LoginActivity extends AppCompatActivity {
 
         loginButton.setOnClickListener(v -> { loginUserEmail(); });
         loginGoogleButton.setOnClickListener(v -> { loginUserGoogle(); });
-        loginAppleButton.setOnClickListener(v -> {
-            // Handle Apple login button click
-        });
         createAccountButton.setOnClickListener(v -> {
             Intent intent = new Intent(LoginActivity.this, CreateAccountActivity.class);
             startActivity(intent);
@@ -314,7 +324,6 @@ public class LoginActivity extends AppCompatActivity {
         // Initialize UI components
         loginButton = findViewById(R.id.buttonSignIn);
         loginGoogleButton = findViewById(R.id.buttonGoogle);
-        loginAppleButton = findViewById(R.id.buttonApple);
         header1TextView = findViewById(R.id.headerTextView);
         header2TextView = findViewById(R.id.header2TextView);
         textTextViews[0] = findViewById(R.id.textTextView1);
@@ -337,7 +346,6 @@ public class LoginActivity extends AppCompatActivity {
         header2TextView.setTypeface(interSemiFont);
         loginButton.setTypeface(interMediumFont);
         loginGoogleButton.setTypeface(interMediumFont);
-        loginAppleButton.setTypeface(interMediumFont);
         textTextViews[0].setTypeface(interRegularFont);
         textTextViews[1].setTypeface(interRegularFont);
         emailEditText.setTypeface(interRegularFont);
@@ -352,25 +360,16 @@ public class LoginActivity extends AppCompatActivity {
         int iconSize = (int) (iconSizeInDp * density);
 
         String googleText = "\uFFFC Continue with Google";
-        String appleText = "\uFFFC Continue with Apple";
 
         SpannableString loginGoogleText = new SpannableString(googleText);
-        SpannableString loginAppleText = new SpannableString(appleText);
 
         Drawable googleIcon = getResources().getDrawable(R.drawable.ic_google);
         googleIcon.setBounds(0, 0, iconSize, iconSize);
-        Drawable appleIcon = getResources().getDrawable(R.drawable.ic_apple);
-        appleIcon.setBounds(0, 0, iconSize, iconSize);
 
         loginGoogleText.setSpan(new ImageSpan(googleIcon, ImageSpan.ALIGN_CENTER),
                 0, 1,
                 SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        loginAppleText.setSpan(new ImageSpan(appleIcon, ImageSpan.ALIGN_CENTER),
-                0, 1,
-                SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
-
         loginGoogleButton.setText(loginGoogleText);
-        loginAppleButton.setText(loginAppleText);
     }
 }

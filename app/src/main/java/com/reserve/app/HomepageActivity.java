@@ -138,6 +138,7 @@ public class HomepageActivity extends AppCompatActivity {
 
         navUpdates.setOnClickListener(v -> {
             // Navigate to updates
+            startActivity(new Intent(this, RentalListActivity.class));
         });
 
         navAdd.setOnClickListener(v -> {

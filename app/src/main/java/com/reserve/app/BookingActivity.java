@@ -513,7 +513,7 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
                 startTime,
                 endTime,
                 cost,
-                "Pending",
+                "Active",
                 licensePlate,
                 vehicleDescription,
                 new DatabaseHandler.BooleanCallback() {
@@ -524,6 +524,7 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
 
                             // Navigate to rental details screen with booking information
                             Intent intent = new Intent(BookingActivity.this, rentalDetailsActivity.class);
+                            intent.putExtra("SPOT_ID", spotId);
                             intent.putExtra("SPOT_NAME", spotName);
                             intent.putExtra("SPOT_LOCATION", spotLocation);
                             intent.putExtra("LICENSE_PLATE", finalLicensePlate);

@@ -8,4 +8,6 @@
     <color name="md_button">#ebebeb</color>
     <color name="md_button_primary">#4B4B4B</color>
     <color name="md_error">#FF0000</color>
+    <color name="status_active_background">#4CAF50</color>
+    <color name="status_expired_background">#FF5722</color>
 </resources>

@@ -18,6 +18,9 @@
         android:theme="@style/Theme.ReserveApp"
         tools:targetApi="31">
         <activity
+            android:name=".RentalListActivity"
+            android:exported="false" />
+        <activity
             android:name=".SavedSpotsActivity"
             android:exported="false" />
         <activity
@@ -57,7 +60,6 @@
             android:name=".HomepageActivity"
             android:exported="false" />
         <activity android:name=".TermsOfServiceActivity" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true"

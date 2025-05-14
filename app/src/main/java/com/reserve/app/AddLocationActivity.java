@@ -160,11 +160,11 @@ public class AddLocationActivity extends AppCompatActivity {
 
         ivProfile.setOnClickListener(v -> startActivity(new Intent(this, ProfileActivity.class)));
 
-        navExplore.setOnClickListener(v -> startActivity(new Intent(this, SavedSpotsActivity.class)));
+        navExplore.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
 
-        navSaved.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
+        navSaved.setOnClickListener(v -> startActivity(new Intent(this, SavedSpotsActivity.class)));
 
-        navUpdates.setOnClickListener(v -> startActivity(new Intent(this, HomepageActivity.class)));
+        navUpdates.setOnClickListener(v -> startActivity(new Intent(this, RentalListActivity.class)));
     }
 
     private void setupSearchBar() {

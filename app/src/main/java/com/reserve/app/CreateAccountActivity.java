@@ -29,7 +29,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 
 public class CreateAccountActivity extends AppCompatActivity {
-    private TextView createAccountButton, createAccountGoogleButton, createAccountAppleButton, loginAccountButton;
+    private TextView createAccountButton, createAccountGoogleButton, loginAccountButton;
     private TextView header1TextView, header2TextView, footerTextView, errorTextView;
     private TextInputEditText firstNameEditText, lastNameEditText, emailEditText,
             passwordEditText, confirmPasswordEditText, phoneEditText;
@@ -54,7 +54,6 @@ public class CreateAccountActivity extends AppCompatActivity {
         // Initialize UI components
         createAccountButton = findViewById(R.id.buttonCreateAccount);
         createAccountGoogleButton = findViewById(R.id.buttonCreateGoogle);
-        createAccountAppleButton = findViewById(R.id.buttonCreateApple);
         header1TextView = findViewById(R.id.headerTextView);
         header2TextView = findViewById(R.id.header2TextView);
         textTextViews[0] = findViewById(R.id.textTextView1);
@@ -93,10 +92,6 @@ public class CreateAccountActivity extends AppCompatActivity {
         createAccountGoogleButton.setOnClickListener(v -> {
             resetPrevious();
             createUserGoogle();
-        });
-
-        createAccountAppleButton.setOnClickListener(v -> {
-            resetPrevious();
         });
 
         loginAccountButton.setOnClickListener(v -> {
@@ -371,7 +366,6 @@ public class CreateAccountActivity extends AppCompatActivity {
 
         createAccountButton.setTypeface(interSemiFont);
         createAccountGoogleButton.setTypeface(interSemiFont);
-        createAccountAppleButton.setTypeface(interSemiFont);
         header1TextView.setTypeface(lexendExaSemiFont);
         header2TextView.setTypeface(interSemiFont);
         textTextViews[0].setTypeface(interRegularFont);
@@ -392,25 +386,16 @@ public class CreateAccountActivity extends AppCompatActivity {
         int iconSize = (int) (iconSizeInDp * density);
 
         String googleText = "\uFFFC Continue with Google";
-        String appleText = "\uFFFC Continue with Apple";
 
         SpannableString loginGoogleText = new SpannableString(googleText);
-        SpannableString loginAppleText = new SpannableString(appleText);
 
         Drawable googleIcon = getResources().getDrawable(R.drawable.ic_google);
         googleIcon.setBounds(0, 0, iconSize, iconSize);
-        Drawable appleIcon = getResources().getDrawable(R.drawable.ic_apple);
-        appleIcon.setBounds(0, 0, iconSize, iconSize);
 
         loginGoogleText.setSpan(new ImageSpan(googleIcon, ImageSpan.ALIGN_CENTER),
                 0, 1,
                 SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        loginAppleText.setSpan(new ImageSpan(appleIcon, ImageSpan.ALIGN_CENTER),
-                0, 1,
-                SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
-
         createAccountGoogleButton.setText(loginGoogleText);
-        createAccountAppleButton.setText(loginAppleText);
     }
 }
