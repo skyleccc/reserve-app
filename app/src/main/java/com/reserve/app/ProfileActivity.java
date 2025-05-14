@@ -2,6 +2,7 @@ package com.reserve.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -47,6 +48,18 @@ public class ProfileActivity extends AppCompatActivity {
         accountBtn.setOnClickListener(v -> {
             startActivity(new Intent(ProfileActivity.this, EditUser.class));
         });
+
+        // Inside onCreate() in ProfileActivity.java
+        LinearLayout tosLayout = findViewById(R.id.tosLayout);
+
+        tosLayout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(ProfileActivity.this, TermsOfServiceActivity.class);
+                startActivity(intent);
+            }
+        });
+
 
         logoutBtn.setOnClickListener(v -> {
             signOut();
