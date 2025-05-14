@@ -117,6 +117,7 @@ public class HomepageActivity extends AppCompatActivity {
 
         navSaved.setOnClickListener(v -> {
             // Navigate to saved
+            startActivity(new Intent(this, SavedSpots.class));
         });
 
         navUpdates.setOnClickListener(v -> {

@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -16,6 +17,7 @@ import java.util.List;
 public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.ViewHolder> {
     private Context context;
     private List<ParkingSpot> spotList;
+    private DatabaseHandler dbHandler;
 
     public ParkingSpotAdapter(Context context, List<ParkingSpot> spotList) {
         this.context = context;
@@ -61,6 +63,26 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
             // Start the activity
             context.startActivity(intent);
         });
+
+        holder.saveBtn.setOnClickListener(v-> {
+            dbHandler = DatabaseHandler.getInstance(context);
+
+            dbHandler.saveParkingSpot(spot, new DatabaseHandler.BooleanCallback() {
+                @Override
+                public void onResult(boolean result) {
+                    if (result) {
+                        android.widget.Toast.makeText(context, "Spot saved successfully!", android.widget.Toast.LENGTH_SHORT).show();
+                    } else {
+                        android.widget.Toast.makeText(context, "Failed to save spot.", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    android.widget.Toast.makeText(context, "Error: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
     }
 
     public void updateSpots(List<ParkingSpot> newSpots) {
@@ -78,6 +100,7 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
         TextView title, address, hour3Rate, hour6Rate, hour12Rate, perDayRate;
         ImageView image;
         Button bookButton;
+        ImageButton saveBtn;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -89,6 +112,7 @@ public class ParkingSpotAdapter extends RecyclerView.Adapter<ParkingSpotAdapter.
             hour12Rate = itemView.findViewById(R.id.et_rate_12h);
             perDayRate = itemView.findViewById(R.id.per_day);
             bookButton = itemView.findViewById(R.id.book_button);
+            saveBtn = itemView.findViewById(R.id.saveBtn);
         }
     }
 }
