@@ -56,6 +56,8 @@
         <activity
             android:name=".HomepageActivity"
             android:exported="false" />
+        <activity android:name=".TermsOfServiceActivity" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
