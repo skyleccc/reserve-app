@@ -14,6 +14,24 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/bottom_panel" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="16dp"
+        app:icon="@drawable/arrow_back_40px"
+        app:iconTint="@color/black"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconSize="24dp"
+        app:cornerRadius="2dp"
+        android:elevation="8dp"
+        android:padding="8dp"
+        android:backgroundTint="@color/white"
+        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <LinearLayout
         android:id="@+id/bottom_panel"
         android:layout_width="match_parent"
@@ -41,6 +59,7 @@
             android:id="@+id/btn_confirm_location"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:backgroundTint="@color/md_button_primary"
             android:text="Confirm Location" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -26,6 +26,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.button.MaterialButton;
 
 import java.io.IOException;
 import java.util.List;
@@ -63,6 +64,13 @@ public class MapPickerActivity extends AppCompatActivity implements OnMapReadyCa
             } else {
                 Toast.makeText(this, "Please select a location first", Toast.LENGTH_SHORT).show();
             }
+        });
+
+        // Set up back button
+        MaterialButton btnBack = findViewById(R.id.btn_back);
+        btnBack.setOnClickListener(v -> {
+            setResult(RESULT_CANCELED);
+            finish();
         });
     }
 
