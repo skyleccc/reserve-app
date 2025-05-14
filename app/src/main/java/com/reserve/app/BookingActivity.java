@@ -1,6 +1,7 @@
 package com.reserve.app;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
@@ -392,17 +393,22 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
 
         // Calculate end time based on selected option
         Calendar calendar = Calendar.getInstance();
+        int durationHours = 3; // Default
         switch (selectedOption) {
             case 0: // 3 Hours
+                durationHours = 3;
                 calendar.add(Calendar.HOUR, 3);
                 break;
             case 1: // 6 Hours
+                durationHours = 6;
                 calendar.add(Calendar.HOUR, 6);
                 break;
             case 2: // 12 Hours
+                durationHours = 12;
                 calendar.add(Calendar.HOUR, 12);
                 break;
             case 3: // 24 Hours
+                durationHours = 24;
                 calendar.add(Calendar.HOUR, 24);
                 break;
         }
@@ -420,6 +426,11 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
 
         double cost = extractCostFromText(rateText);
 
+        // Store these values for use in the intent after successful booking
+        final int finalDurationHours = durationHours;
+        final String finalLicensePlate = licensePlate;
+        final String finalVehicleDescription = vehicleDescription;
+
         // Call create rental with all required parameters
         dbHandler.createRental(
                 spotId,
@@ -434,7 +445,18 @@ public class BookingActivity extends AppCompatActivity implements OnMapReadyCall
                     public void onResult(boolean result) {
                         if (result) {
                             Toast.makeText(BookingActivity.this, "Booking successful!", Toast.LENGTH_SHORT).show();
-                            // Navigate back to home or confirmation screen
+
+                            // Navigate to rental details screen with booking information
+                            Intent intent = new Intent(BookingActivity.this, rentalDetailsActivity.class);
+                            intent.putExtra("SPOT_NAME", spotName);
+                            intent.putExtra("SPOT_LOCATION", spotLocation);
+                            intent.putExtra("LICENSE_PLATE", finalLicensePlate);
+                            intent.putExtra("VEHICLE_DESC", finalVehicleDescription);
+                            intent.putExtra("DURATION", finalDurationHours);
+                            intent.putExtra("PAYMENT_METHOD", "Credit Card"); // Assuming default payment method
+                            startActivity(intent);
+
+                            // Close this activity
                             finish();
                         } else {
                             Toast.makeText(BookingActivity.this, "Booking failed.", Toast.LENGTH_SHORT).show();
