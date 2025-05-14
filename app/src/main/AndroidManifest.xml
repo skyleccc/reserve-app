@@ -18,6 +18,9 @@
         android:theme="@style/Theme.ReserveApp"
         tools:targetApi="31">
         <activity
+            android:name=".rentalDetailsActivity"
+            android:exported="false" />
+        <activity
             android:name=".BookingActivity"
             android:exported="false" />
         <activity
