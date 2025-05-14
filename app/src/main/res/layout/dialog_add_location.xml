@@ -8,127 +8,150 @@
     app:cardElevation="4dp"
     android:tag="location_dialog">
 
-    <LinearLayout
+    <!-- FrameLayout to allow positioning the close button in the top-right corner -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-
-        <TextView
-            android:id="@+id/dialog_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Add Parking Location"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="16dp"/>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-            <EditText
-                android:id="@+id/et_location_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Location Name"
-                android:inputType="text"/>
-        </com.google.android.material.textfield.TextInputLayout>
+        android:layout_height="wrap_content">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="16dp">
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:id="@+id/dialog_title"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Location Address:"
-                android:textStyle="bold"/>
+                android:text="Add Parking Location"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"/>
 
-            <TextView
-                android:id="@+id/tv_location_address"
-                android:layout_width="0dp"
-                android:layout_weight="1"
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="No location selected"
-                android:layout_marginStart="8dp"
-                android:ellipsize="end"
-                android:maxLines="2"/>
+                android:layout_marginTop="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <EditText
+                    android:id="@+id/et_location_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Location Name"
+                    android:inputType="text"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Location Address:"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/tv_location_address"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="No location selected"
+                    android:layout_marginStart="8dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"/>
+            </LinearLayout>
+
+            <!--Changed Button Color-->
+            <Button
+                android:id="@+id/btn_pick_location"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Select on Map"
+                android:backgroundTint="#4B4B4B"
+                android:layout_marginTop="8dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <EditText
+                    android:id="@+id/et_rate_3h"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Rate for 3 hours (₱)"
+                    android:inputType="numberDecimal"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <EditText
+                    android:id="@+id/et_rate_6h"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Rate for 6 hours (₱)"
+                    android:inputType="numberDecimal"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <EditText
+                    android:id="@+id/et_rate_12h"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Rate for 12 hours (₱)"
+                    android:inputType="numberDecimal"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <EditText
+                    android:id="@+id/et_rate_24h"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Rate for 24 hours (₱)"
+                    android:inputType="numberDecimal"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!--Changed Button Color-->
+            <Button
+                android:id="@+id/btn_save"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Save Location"
+                android:backgroundTint="#4B4B4B"
+                android:layout_marginTop="16dp"/>
         </LinearLayout>
 
+        <!--Added X button to close card-->
         <Button
-            android:id="@+id/btn_pick_location"
-            android:layout_width="match_parent"
+            android:id="@+id/btn_close"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Select on Map"
-            android:layout_marginTop="8dp"/>
+            android:text="X"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:background="@android:color/transparent"
+            android:textColor="@android:color/black"
+            android:textSize="18sp"/>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-            <EditText
-                android:id="@+id/et_rate_3h"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Rate for 3 hours (₱)"
-                android:inputType="numberDecimal"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-            <EditText
-                android:id="@+id/et_rate_6h"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Rate for 6 hours (₱)"
-                android:inputType="numberDecimal"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-            <EditText
-                android:id="@+id/et_rate_12h"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Rate for 12 hours (₱)"
-                android:inputType="numberDecimal"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-            <EditText
-                android:id="@+id/et_rate_24h"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Rate for 24 hours (₱)"
-                android:inputType="numberDecimal"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <Button
-            android:id="@+id/btn_save"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Save Location"
-            android:layout_marginTop="16dp"/>
-    </LinearLayout>
+    </FrameLayout>
 </androidx.cardview.widget.CardView>

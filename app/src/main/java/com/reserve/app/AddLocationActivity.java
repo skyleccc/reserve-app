@@ -277,6 +277,12 @@ public class AddLocationActivity extends AppCompatActivity {
         Button btnPickLocation = currentLocationDialog.findViewById(R.id.btn_pick_location);
         Button btnSave = currentLocationDialog.findViewById(R.id.btn_save);
 
+        // Added Close Button to add location forms
+        Button btnClose = currentLocationDialog.findViewById(R.id.btn_close); // Assuming you've assigned the ID for the "X" button
+        btnClose.setOnClickListener(v -> {
+            currentLocationDialog.dismiss(); // Close the dialog
+        });
+
         // Set up map selection
         btnPickLocation.setOnClickListener(v -> {
             Intent mapIntent = new Intent(AddLocationActivity.this, MapPickerActivity.class);
