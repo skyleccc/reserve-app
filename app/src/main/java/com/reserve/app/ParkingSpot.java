@@ -22,4 +22,14 @@ public class ParkingSpot {
         this.pricePerDay = pricePerDay;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+
+
 }

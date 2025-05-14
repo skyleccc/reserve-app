@@ -59,6 +59,11 @@ public class DatabaseHandler {
         void onFailure(Exception e);
     }
 
+    public interface SavedParkingSpotsCallback {
+        void onSuccess(List<ParkingSpot> spots);
+        void onFailure(Exception e);
+    }
+
     // Singleton instance
     private static DatabaseHandler instance;
 
@@ -71,6 +76,7 @@ public class DatabaseHandler {
     private static final String COLLECTION_PARKING_SPACES = "parking_spaces";
     private static final String COLLECTION_RENTALS = "rentals";
     private static final String COLLECTION_MESSAGES = "messages";
+    private static final String COLLECTION_SAVED_SPACES = "saved_spaces";
 
     private DatabaseHandler(Context context) {
         mAuth = FirebaseAuth.getInstance();
@@ -262,6 +268,70 @@ public class DatabaseHandler {
                     }
 
                     callback.onSuccess(spots);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void saveParkingSpot(ParkingSpot spot, BooleanCallback callback) {
+        db.collection(COLLECTION_SAVED_SPACES)
+                .document(spot.id)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        // Unsave the spot if it already exists
+                        db.collection(COLLECTION_SAVED_SPACES)
+                                .document(spot.id)
+                                .delete()
+                                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                                .addOnFailureListener(callback::onError);
+                    } else {
+                        // Proceed with adding new spot
+                        Map<String, Object> parkingSpotData = new HashMap<>();
+                        parkingSpotData.put("name", spot.title);
+                        parkingSpotData.put("location", spot.address);
+                        parkingSpotData.put("rate3h", Double.parseDouble(spot.price3Hours.replace("₱", "")));
+                        parkingSpotData.put("rate6h", Double.parseDouble(spot.price6Hours.replace("₱", "")));
+                        parkingSpotData.put("rate12h", Double.parseDouble(spot.price12Hours.replace("₱", "")));
+                        parkingSpotData.put("rate24h", Double.parseDouble(spot.pricePerDay.replace("₱", "")));
+
+                        db.collection(COLLECTION_SAVED_SPACES)
+                                .document(spot.id)
+                                .set(parkingSpotData)
+                                .addOnSuccessListener(aVoid -> callback.onResult(true))
+                                .addOnFailureListener(callback::onError);
+
+                    }
+                })
+                .addOnFailureListener(callback::onError);
+    }
+
+    public void getSavedParkingSpots(SavedParkingSpotsCallback callback) {
+        db.collection(COLLECTION_SAVED_SPACES)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<ParkingSpot> spots = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        String id = doc.getId();  // Get the document ID
+                        String name = doc.getString("name");
+                        String location = doc.getString("location");
+                        Double rate3h = doc.getDouble("rate3h");
+                        Double rate6h = doc.getDouble("rate6h");
+                        Double rate12h = doc.getDouble("rate12h");
+                        Double rate24h = doc.getDouble("rate24h");
+
+                        // Format prices
+                        String price3Hours = "₱" + String.format("%.2f", rate3h);
+                        String price6Hours = "₱" + String.format("%.2f", rate6h);
+                        String price12Hours = "₱" + String.format("%.2f", rate12h);
+                        String pricePerDay = "₱" + String.format("%.2f", rate24h);
+
+                        spots.add(new ParkingSpot(id, name, location,
+                                R.drawable.ic_map_placeholder, price3Hours,
+                                price6Hours, price12Hours, pricePerDay));
+                    }
+
+                    callback.onSuccess(spots); // Return the retrieved list
                 })
                 .addOnFailureListener(callback::onFailure);
     }
