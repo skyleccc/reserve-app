@@ -15,6 +15,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.button.MaterialButton;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +31,11 @@ public class EditUser extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_edit_user);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         et_fname = findViewById(R.id.editFirstName);
         et_lname = findViewById(R.id.editLastName);
@@ -37,6 +44,9 @@ public class EditUser extends AppCompatActivity {
         et_password = findViewById(R.id.editPassword);
         et_confirm_password = findViewById(R.id.editConfirmPassword);
         confirmChange = findViewById(R.id.confirmChangeBtn);
+        MaterialButton backButton = findViewById(R.id.btn_back);
+
+        backButton.setOnClickListener(v -> finish());
 
         dbHandler = DatabaseHandler.getInstance(this);
 

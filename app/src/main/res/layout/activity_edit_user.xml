@@ -8,6 +8,23 @@
     android:background="@color/md_primary"
     tools:context=".EditUser">
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="16dp"
+        app:icon="@drawable/arrow_back_40px"
+        app:iconTint="@color/black"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconSize="24dp"
+        app:cornerRadius="2dp"
+        android:elevation="8dp"
+        android:padding="8dp"
+        android:background="@color/transparent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <TextView
         android:id="@+id/headerTextView"
         android:layout_width="wrap_content"
